@@ -53,9 +53,12 @@ const Dashboard = () => {
 
   const loadFiles = async () => {
     try {
+      if (!user) return;
+      
       const { data, error } = await supabase
         .from('files')
         .select('*')
+        .eq('user_id', user.id)
         .order('upload_date', { ascending: false });
 
       if (error) throw error;
