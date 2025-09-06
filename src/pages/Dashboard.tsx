@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from '@/hooks/use-toast';
 import { User } from '@supabase/supabase-js';
-import { Upload, Download, Copy, LogOut, Share, Trash2 } from 'lucide-react';
+import { Upload, Download, Copy, LogOut, Share, Trash2, Home } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 
 interface FileData {
@@ -198,7 +198,12 @@ const Dashboard = () => {
     <div className="min-h-screen bg-background">
       <header className="border-b border-border bg-card">
         <div className="container mx-auto px-4 py-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <h1 className="text-xl sm:text-2xl font-bold text-foreground">Shyfto Dashboard</h1>
+          <div className="flex items-center gap-4">
+            <Link to="/" className="flex items-center gap-2 text-xl sm:text-2xl font-bold text-foreground hover:text-primary transition-colors">
+              <Home className="w-5 h-5 sm:w-6 sm:h-6" />
+              Shyfto Dashboard
+            </Link>
+          </div>
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4 w-full sm:w-auto">
             <span className="text-sm text-muted-foreground truncate max-w-[200px] sm:max-w-none">{user?.email}</span>
             <Button variant="outline" onClick={handleSignOut} size="sm" className="w-full sm:w-auto">
