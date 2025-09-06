@@ -33,7 +33,6 @@ const Dashboard = () => {
         return;
       }
       setUser(session.user);
-      await loadFiles();
     };
 
     checkUser();
@@ -50,6 +49,12 @@ const Dashboard = () => {
 
     return () => subscription.unsubscribe();
   }, [navigate]);
+
+  useEffect(() => {
+    if (user) {
+      loadFiles();
+    }
+  }, [user]);
 
   const loadFiles = async () => {
     try {
