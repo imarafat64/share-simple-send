@@ -37,7 +37,7 @@ const Index = () => {
     <div className="min-h-screen bg-background">
       <header className="border-b border-border bg-card">
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-foreground">FileShare</h1>
+          <h1 className="text-2xl font-bold text-foreground">Shyfto</h1>
           <Button onClick={handleGetStarted} variant="outline">
             {user ? 'Dashboard' : 'Sign In'}
           </Button>
@@ -46,19 +46,19 @@ const Index = () => {
 
       <main className="container mx-auto px-4 py-16">
         <div className="text-center mb-16">
-          <h1 className="text-6xl font-bold mb-6 text-foreground">
+          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold mb-6 text-foreground">
             Share Files <span className="text-primary">Instantly</span>
           </h1>
-          <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
+          <p className="text-lg sm:text-xl text-muted-foreground mb-8 max-w-2xl mx-auto px-4">
             Upload files securely and share them with anyone using a simple link. 
             No registration required for downloads.
           </p>
-          <Button onClick={handleGetStarted} size="lg" className="text-lg px-8 py-4">
-            Get Started <ArrowRight className="w-5 h-5 ml-2" />
+          <Button onClick={handleGetStarted} size="lg" className="text-base sm:text-lg px-6 sm:px-8 py-3 sm:py-4">
+            Get Started <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 ml-2" />
           </Button>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-8 max-w-4xl mx-auto">
+        <div className="grid sm:grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 max-w-4xl mx-auto px-4">
           <Card>
             <CardHeader className="text-center">
               <Upload className="w-12 h-12 text-primary mx-auto mb-4" />

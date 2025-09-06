@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from '@/hooks/use-toast';
-import { Download as DownloadIcon, FileIcon } from 'lucide-react';
+import { Download as DownloadIcon, FileIcon, Home } from 'lucide-react';
 
 interface FileData {
   id: string;
@@ -142,7 +142,19 @@ const Download = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-md">
+      <div className="w-full max-w-md space-y-4">
+        <div className="flex justify-center">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => window.location.href = '/'}
+            className="flex items-center gap-2"
+          >
+            <Home className="w-4 h-4" />
+            Create Account to Share Files
+          </Button>
+        </div>
+        <Card className="w-full">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
             <FileIcon className="w-16 h-16 text-primary" />
@@ -167,16 +179,9 @@ const Download = () => {
             {downloading ? 'Downloading...' : 'Download File'}
           </Button>
           
-          <div className="text-center">
-            <a 
-              href="/auth" 
-              className="text-sm text-primary hover:underline"
-            >
-              Create your own account to upload files
-            </a>
-          </div>
         </CardContent>
-      </Card>
+        </Card>
+      </div>
     </div>
   );
 };
