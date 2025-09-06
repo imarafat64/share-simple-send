@@ -192,11 +192,11 @@ const Dashboard = () => {
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border bg-card">
-        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-foreground">File Dashboard</h1>
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-muted-foreground">{user?.email}</span>
-            <Button variant="outline" onClick={handleSignOut}>
+        <div className="container mx-auto px-4 py-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <h1 className="text-xl sm:text-2xl font-bold text-foreground">Shyfto Dashboard</h1>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4 w-full sm:w-auto">
+            <span className="text-sm text-muted-foreground truncate max-w-[200px] sm:max-w-none">{user?.email}</span>
+            <Button variant="outline" onClick={handleSignOut} size="sm" className="w-full sm:w-auto">
               <LogOut className="w-4 h-4 mr-2" />
               Sign Out
             </Button>
@@ -204,25 +204,25 @@ const Dashboard = () => {
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-8">
-        <div className="mb-8">
+      <main className="container mx-auto px-4 py-6 sm:py-8">
+        <div className="mb-6 sm:mb-8">
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+            <CardHeader className="pb-4">
+              <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
                 <Upload className="w-5 h-5" />
                 Upload File
               </CardTitle>
-              <CardDescription>
+              <CardDescription className="text-sm">
                 Upload a file to share with others
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-0">
               <div className="space-y-4">
                 <Input
                   type="file"
                   onChange={handleFileUpload}
                   disabled={uploading}
-                  className="cursor-pointer"
+                  className="cursor-pointer text-sm"
                 />
                 {uploading && (
                   <div className="text-sm text-muted-foreground">
@@ -235,12 +235,12 @@ const Dashboard = () => {
         </div>
 
         <div className="space-y-4">
-          <h2 className="text-xl font-semibold">Your Files</h2>
+          <h2 className="text-lg sm:text-xl font-semibold">Your Files</h2>
           
           {files.length === 0 ? (
             <Card>
-              <CardContent className="text-center py-8">
-                <div className="text-muted-foreground">
+              <CardContent className="text-center py-8 sm:py-12">
+                <div className="text-muted-foreground text-sm sm:text-base">
                   No files uploaded yet. Upload your first file to get started!
                 </div>
               </CardContent>
@@ -249,29 +249,37 @@ const Dashboard = () => {
             <div className="grid gap-4">
               {files.map((file) => (
                 <Card key={file.id}>
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
-                        <h3 className="font-semibold text-foreground">{file.filename}</h3>
-                        <div className="text-sm text-muted-foreground mt-1">
-                          {formatFileSize(file.size)} • Uploaded {formatDate(file.upload_date)} • {file.download_count} downloads
+                  <CardContent className="p-4 sm:p-6">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-semibold text-foreground text-sm sm:text-base truncate">{file.filename}</h3>
+                        <div className="text-xs sm:text-sm text-muted-foreground mt-1 space-y-1 sm:space-y-0">
+                          <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
+                            <span>{formatFileSize(file.size)}</span>
+                            <span className="hidden sm:inline">•</span>
+                            <span>Uploaded {formatDate(file.upload_date)}</span>
+                            <span className="hidden sm:inline">•</span>
+                            <span>{file.download_count} downloads</span>
+                          </div>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-2">
                         <Button
                           variant="outline"
                           size="sm"
                           onClick={() => copyShareLink(file.id)}
+                          className="text-xs sm:text-sm"
                         >
-                          <Copy className="w-4 h-4 mr-2" />
+                          <Copy className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
                           Copy Link
                         </Button>
                         <Button
                           variant="outline"
                           size="sm"
                           onClick={() => deleteFile(file.id, file.storage_path)}
+                          className="text-xs sm:text-sm"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Trash2 className="w-3 h-3 sm:w-4 sm:h-4" />
                         </Button>
                       </div>
                     </div>
