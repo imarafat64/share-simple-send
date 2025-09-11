@@ -16,11 +16,20 @@ interface FileData {
   download_count: number;
   storage_path: string;
   mimetype: string;
+  batch_id?: string;
+}
+
+interface FileBatch {
+  batch_id: string;
+  files: FileData[];
+  total_size: number;
+  upload_date: string;
 }
 
 const Dashboard = () => {
   const [user, setUser] = useState<User | null>(null);
   const [files, setFiles] = useState<FileData[]>([]);
+  const [fileBatches, setFileBatches] = useState<FileBatch[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const navigate = useNavigate();
@@ -68,6 +77,40 @@ const Dashboard = () => {
 
       if (error) throw error;
       setFiles(data || []);
+
+      // Group files by batch_id
+      const batchMap = new Map<string, FileData[]>();
+      const singleFiles: FileData[] = [];
+
+      (data || []).forEach(file => {
+        if (file.batch_id) {
+          if (!batchMap.has(file.batch_id)) {
+            batchMap.set(file.batch_id, []);
+          }
+          batchMap.get(file.batch_id)!.push(file);
+        } else {
+          singleFiles.push(file);
+        }
+      });
+
+      const batches: FileBatch[] = Array.from(batchMap.entries()).map(([batch_id, files]) => ({
+        batch_id,
+        files,
+        total_size: files.reduce((sum, file) => sum + file.size, 0),
+        upload_date: files[0].upload_date
+      }));
+
+      // Add single files as individual batches
+      singleFiles.forEach(file => {
+        batches.push({
+          batch_id: file.id,
+          files: [file],
+          total_size: file.size,
+          upload_date: file.upload_date
+        });
+      });
+
+      setFileBatches(batches.sort((a, b) => new Date(b.upload_date).getTime() - new Date(a.upload_date).getTime()));
     } catch (error) {
       toast({
         title: "Error",
@@ -85,6 +128,9 @@ const Dashboard = () => {
 
     setUploading(true);
     try {
+      // Generate batch_id for multiple files
+      const batchId = files.length > 1 ? crypto.randomUUID() : null;
+
       const uploadPromises = Array.from(files).map(async (file) => {
         const fileExt = file.name.split('.').pop();
         const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
@@ -105,7 +151,8 @@ const Dashboard = () => {
             filename: file.name,
             size: file.size,
             storage_path: filePath,
-            mimetype: file.type
+            mimetype: file.type,
+            batch_id: batchId
           });
 
         if (dbError) throw dbError;
@@ -136,8 +183,10 @@ const Dashboard = () => {
     await supabase.auth.signOut();
   };
 
-  const copyShareLink = (fileId: string) => {
-    const shareUrl = `${window.location.origin}/download/${fileId}`;
+  const copyShareLink = (batchId: string, isBatch: boolean = false) => {
+    const shareUrl = isBatch ? 
+      `${window.location.origin}/download/batch/${batchId}` : 
+      `${window.location.origin}/download/${batchId}`;
     navigator.clipboard.writeText(shareUrl);
     toast({
       title: "Link copied",
@@ -145,33 +194,35 @@ const Dashboard = () => {
     });
   };
 
-  const deleteFile = async (fileId: string, storagePath: string) => {
+  const deleteFileBatch = async (batch: FileBatch) => {
     try {
-      // Delete from storage
+      // Delete all files in the batch from storage
+      const storagePaths = batch.files.map(file => file.storage_path);
       const { error: storageError } = await supabase.storage
         .from('files')
-        .remove([storagePath]);
+        .remove(storagePaths);
 
       if (storageError) throw storageError;
 
-      // Delete from database
+      // Delete all files in the batch from database
+      const fileIds = batch.files.map(file => file.id);
       const { error: dbError } = await supabase
         .from('files')
         .delete()
-        .eq('id', fileId);
+        .in('id', fileIds);
 
       if (dbError) throw dbError;
 
       toast({
         title: "Success",
-        description: "File deleted successfully!"
+        description: `${batch.files.length} file${batch.files.length > 1 ? 's' : ''} deleted successfully!`
       });
 
       await loadFiles();
     } catch (error) {
       toast({
         title: "Delete failed",
-        description: "Failed to delete file",
+        description: "Failed to delete files",
         variant: "destructive"
       });
     }
@@ -253,7 +304,7 @@ const Dashboard = () => {
         <div className="space-y-4">
           <h2 className="text-lg sm:text-xl font-semibold">Your Files</h2>
           
-          {files.length === 0 ? (
+          {fileBatches.length === 0 ? (
             <Card>
               <CardContent className="text-center py-8 sm:py-12">
                 <div className="text-muted-foreground text-sm sm:text-base">
@@ -263,19 +314,36 @@ const Dashboard = () => {
             </Card>
           ) : (
             <div className="grid gap-4">
-              {files.map((file) => (
-                <Card key={file.id}>
+              {fileBatches.map((batch) => (
+                <Card key={batch.batch_id}>
                   <CardContent className="p-4 sm:p-6">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                       <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold text-foreground text-sm sm:text-base truncate">{file.filename}</h3>
-                        <div className="text-xs sm:text-sm text-muted-foreground mt-1 space-y-1 sm:space-y-0">
+                        {batch.files.length === 1 ? (
+                          <h3 className="font-semibold text-foreground text-sm sm:text-base truncate">
+                            {batch.files[0].filename}
+                          </h3>
+                        ) : (
+                          <div>
+                            <h3 className="font-semibold text-foreground text-sm sm:text-base">
+                              {batch.files.length} files uploaded together
+                            </h3>
+                            <div className="text-xs text-muted-foreground mt-1 space-y-1">
+                              {batch.files.map((file, index) => (
+                                <div key={file.id} className="truncate">
+                                  {index + 1}. {file.filename}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        <div className="text-xs sm:text-sm text-muted-foreground mt-2 space-y-1 sm:space-y-0">
                           <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
-                            <span>{formatFileSize(file.size)}</span>
+                            <span>{formatFileSize(batch.total_size)}</span>
                             <span className="hidden sm:inline">•</span>
-                            <span>Uploaded {formatDate(file.upload_date)}</span>
+                            <span>Uploaded {formatDate(batch.upload_date)}</span>
                             <span className="hidden sm:inline">•</span>
-                            <span>{file.download_count} downloads</span>
+                            <span>{batch.files.reduce((sum, file) => sum + file.download_count, 0)} downloads</span>
                           </div>
                         </div>
                       </div>
@@ -283,7 +351,7 @@ const Dashboard = () => {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => copyShareLink(file.id)}
+                          onClick={() => copyShareLink(batch.batch_id, batch.files.length > 1)}
                           className="text-xs sm:text-sm"
                         >
                           <Copy className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
@@ -292,7 +360,7 @@ const Dashboard = () => {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => deleteFile(file.id, file.storage_path)}
+                          onClick={() => deleteFileBatch(batch)}
                           className="text-xs sm:text-sm"
                         >
                           <Trash2 className="w-3 h-3 sm:w-4 sm:h-4" />
