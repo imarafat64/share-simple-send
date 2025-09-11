@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       files: {
         Row: {
+          batch_id: string | null
           download_count: number | null
           filename: string
           id: string
@@ -26,6 +27,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          batch_id?: string | null
           download_count?: number | null
           filename: string
           id?: string
@@ -36,6 +38,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          batch_id?: string | null
           download_count?: number | null
           filename?: string
           id?: string
@@ -52,7 +55,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      generate_batch_id: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
     }
     Enums: {
       [_ in never]: never
