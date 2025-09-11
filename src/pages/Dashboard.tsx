@@ -80,45 +80,50 @@ const Dashboard = () => {
   };
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file || !user) return;
+    const files = event.target.files;
+    if (!files || files.length === 0 || !user) return;
 
     setUploading(true);
     try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
-      const filePath = `${user.id}/${fileName}`;
+      const uploadPromises = Array.from(files).map(async (file) => {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+        const filePath = `${user.id}/${fileName}`;
 
-      // Upload file to storage
-      const { error: uploadError } = await supabase.storage
-        .from('files')
-        .upload(filePath, file);
+        // Upload file to storage
+        const { error: uploadError } = await supabase.storage
+          .from('files')
+          .upload(filePath, file);
 
-      if (uploadError) throw uploadError;
+        if (uploadError) throw uploadError;
 
-      // Save file metadata to database
-      const { error: dbError } = await supabase
-        .from('files')
-        .insert({
-          user_id: user.id,
-          filename: file.name,
-          size: file.size,
-          storage_path: filePath,
-          mimetype: file.type
-        });
+        // Save file metadata to database
+        const { error: dbError } = await supabase
+          .from('files')
+          .insert({
+            user_id: user.id,
+            filename: file.name,
+            size: file.size,
+            storage_path: filePath,
+            mimetype: file.type
+          });
 
-      if (dbError) throw dbError;
+        if (dbError) throw dbError;
+        return file.name;
+      });
+
+      const uploadedFiles = await Promise.all(uploadPromises);
 
       toast({
         title: "Success",
-        description: "File uploaded successfully!"
+        description: `${uploadedFiles.length} file${uploadedFiles.length > 1 ? 's' : ''} uploaded successfully!`
       });
 
       await loadFiles();
     } catch (error) {
       toast({
         title: "Upload failed",
-        description: error instanceof Error ? error.message : "Failed to upload file",
+        description: error instanceof Error ? error.message : "Failed to upload one or more files",
         variant: "destructive"
       });
     } finally {
@@ -223,13 +228,14 @@ const Dashboard = () => {
                 Upload File
               </CardTitle>
               <CardDescription className="text-sm">
-                Upload a file to share with others
+                Upload one or multiple files to share with others
               </CardDescription>
             </CardHeader>
             <CardContent className="pt-0">
               <div className="space-y-4">
                 <Input
                   type="file"
+                  multiple
                   onChange={handleFileUpload}
                   disabled={uploading}
                   className="cursor-pointer text-sm"
