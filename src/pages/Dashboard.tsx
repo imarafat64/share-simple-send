@@ -28,6 +28,7 @@ interface FileBatch {
 
 const Dashboard = () => {
   const [user, setUser] = useState<User | null>(null);
+  const [username, setUsername] = useState<string>('');
   const [files, setFiles] = useState<FileData[]>([]);
   const [fileBatches, setFileBatches] = useState<FileBatch[]>([]);
   const [loading, setLoading] = useState(true);
@@ -62,8 +63,27 @@ const Dashboard = () => {
   useEffect(() => {
     if (user) {
       loadFiles();
+      loadUsername();
     }
   }, [user]);
+
+  const loadUsername = async () => {
+    try {
+      if (!user) return;
+      
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('username')
+        .eq('user_id', user.id)
+        .single();
+
+      if (error) throw error;
+      setUsername(data?.username || '');
+    } catch (error) {
+      // Fallback to email username if profile not found
+      setUsername(user?.email?.split('@')[0] || '');
+    }
+  };
 
   const loadFiles = async () => {
     try {
@@ -261,7 +281,9 @@ const Dashboard = () => {
             </Link>
           </div>
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4 w-full sm:w-auto">
-            <span className="text-sm text-muted-foreground truncate max-w-[200px] sm:max-w-none">{user?.email}</span>
+            <span className="text-sm font-medium text-foreground truncate max-w-[200px] sm:max-w-none">
+              {username || user?.email?.split('@')[0]}
+            </span>
             <Button variant="outline" onClick={handleSignOut} size="sm" className="w-full sm:w-auto">
               <LogOut className="w-4 h-4 mr-2" />
               Sign Out
