@@ -281,9 +281,12 @@ const Dashboard = () => {
             </Link>
           </div>
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4 w-full sm:w-auto">
-            <span className="text-sm font-medium text-foreground truncate max-w-[200px] sm:max-w-none">
-              {username || user?.email?.split('@')[0]}
-            </span>
+            <div className="flex flex-col items-start">
+              <span className="text-sm font-medium text-foreground truncate max-w-[200px] sm:max-w-none">
+                {username || user?.email?.split('@')[0]}
+              </span>
+              <span className="text-xs text-muted-foreground truncate max-w-[200px] sm:max-w-none">{user?.email}</span>
+            </div>
             <Button variant="outline" onClick={handleSignOut} size="sm" className="w-full sm:w-auto">
               <LogOut className="w-4 h-4 mr-2" />
               Sign Out
