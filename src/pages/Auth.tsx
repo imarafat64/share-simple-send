@@ -21,16 +21,7 @@ const Auth = () => {
     const checkUser = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
-        // Only redirect if email is verified
-        if (session.user.email_confirmed_at) {
-          navigate('/dashboard');
-        } else {
-          toast({
-            title: "Email verification required",
-            description: "Please verify your email address to access your account.",
-            variant: "destructive"
-          });
-        }
+        navigate('/dashboard');
       }
     };
     checkUser();
@@ -40,16 +31,7 @@ const Auth = () => {
       (event, session) => {
         setUser(session?.user ?? null);
         if (session?.user) {
-          // Check if email is verified before allowing access
-          if (session.user.email_confirmed_at) {
-            navigate('/dashboard');
-          } else {
-            toast({
-              title: "Email verification required",
-              description: "Please check your email and click the verification link before accessing your account.",
-              variant: "destructive"
-            });
-          }
+          navigate('/dashboard');
         }
       }
     );
@@ -90,9 +72,8 @@ const Auth = () => {
         }
       } else {
         toast({
-          title: "Check your email",
-          description: "We've sent you a verification link. Please verify your email to complete registration.",
-          duration: 10000
+          title: "Account created successfully",
+          description: "Welcome! You can now access your dashboard."
         });
       }
     } catch (error) {

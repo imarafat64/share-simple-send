@@ -42,16 +42,6 @@ const Dashboard = () => {
         navigate('/auth');
         return;
       }
-      // Check if email is verified
-      if (!session.user.email_confirmed_at) {
-        toast({
-          title: "Email verification required",
-          description: "Please verify your email address to access your account.",
-          variant: "destructive"
-        });
-        navigate('/auth');
-        return;
-      }
       setUser(session.user);
     };
 
@@ -60,13 +50,6 @@ const Dashboard = () => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         if (!session?.user) {
-          navigate('/auth');
-        } else if (!session.user.email_confirmed_at) {
-          toast({
-            title: "Email verification required", 
-            description: "Please verify your email address to access your account.",
-            variant: "destructive"
-          });
           navigate('/auth');
         } else {
           setUser(session.user);
