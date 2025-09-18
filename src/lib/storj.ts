@@ -3,9 +3,20 @@ import { supabase } from '@/integrations/supabase/client';
 // Storj service that uses edge function
 export const storjService = {
   async uploadFile(file: File, filePath: string): Promise<void> {
-    // Convert file to base64 for transmission
+    // Convert file to base64 for transmission in chunks to avoid stack overflow
     const buffer = await file.arrayBuffer();
-    const base64 = btoa(String.fromCharCode(...new Uint8Array(buffer)));
+    const uint8Array = new Uint8Array(buffer);
+    
+    // Convert to base64 in chunks to avoid maximum call stack size exceeded
+    let binaryString = '';
+    const chunkSize = 1024; // Process 1KB at a time
+    
+    for (let i = 0; i < uint8Array.length; i += chunkSize) {
+      const chunk = uint8Array.slice(i, i + chunkSize);
+      binaryString += String.fromCharCode(...chunk);
+    }
+    
+    const base64 = btoa(binaryString);
     
     const { data, error } = await supabase.functions.invoke('storj-operations', {
       body: {
