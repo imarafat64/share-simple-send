@@ -1,85 +1,68 @@
-import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
+import { supabase } from '@/integrations/supabase/client';
 
-// Storj DCS S3-compatible configuration
-const STORJ_ENDPOINT = 'https://gateway.storjshare.io';
-const STORJ_BUCKET = 'shyfto';
-
-// Create S3 client configured for Storj
-const createStorjClient = () => {
-  // These credentials need to be provided by the user
-  // For now, we'll use placeholder values that need to be replaced
-  const accessKeyId = process.env.STORJ_ACCESS_KEY_ID || 'your-storj-access-key';
-  const secretAccessKey = process.env.STORJ_SECRET_ACCESS_KEY || 'your-storj-secret-key';
-  
-  return new S3Client({
-    endpoint: STORJ_ENDPOINT,
-    region: 'us1', // Storj uses 'us1' as the region
-    credentials: {
-      accessKeyId,
-      secretAccessKey,
-    },
-    forcePathStyle: true, // Required for S3-compatible services
-  });
-};
-
+// Storj service that uses edge function
 export const storjService = {
   async uploadFile(file: File, filePath: string): Promise<void> {
-    const client = createStorjClient();
+    // Convert file to base64 for transmission
+    const buffer = await file.arrayBuffer();
+    const base64 = btoa(String.fromCharCode(...new Uint8Array(buffer)));
     
-    const command = new PutObjectCommand({
-      Bucket: STORJ_BUCKET,
-      Key: filePath,
-      Body: file,
-      ContentType: file.type,
-      ContentLength: file.size,
+    const { data, error } = await supabase.functions.invoke('storj-operations', {
+      body: {
+        operation: 'upload',
+        filePath,
+        fileData: base64,
+        contentType: file.type,
+        size: file.size,
+      },
     });
 
-    await client.send(command);
+    if (error) throw error;
+    if (!data?.success) throw new Error('Upload failed');
   },
 
   async downloadFile(filePath: string): Promise<Blob> {
-    const client = createStorjClient();
-    
-    const command = new GetObjectCommand({
-      Bucket: STORJ_BUCKET,
-      Key: filePath,
+    const { data, error } = await supabase.functions.invoke('storj-operations', {
+      body: {
+        operation: 'download',
+        filePath,
+      },
     });
 
-    const response = await client.send(command);
+    if (error) throw error;
+    if (!data?.success) throw new Error('Download failed');
     
-    if (!response.Body) {
-      throw new Error('No file content received');
-    }
-
-    // Convert the stream to blob
-    const chunks: Uint8Array[] = [];
-    const reader = response.Body.transformToWebStream().getReader();
-    
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      chunks.push(value);
+    // Convert base64 back to blob
+    const binaryString = atob(data.data);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
     }
     
-    const blob = new Blob(chunks, { type: response.ContentType });
-    return blob;
+    return new Blob([bytes], { type: data.contentType });
   },
 
   async deleteFile(filePath: string): Promise<void> {
-    const client = createStorjClient();
-    
-    const command = new DeleteObjectCommand({
-      Bucket: STORJ_BUCKET,
-      Key: filePath,
+    const { data, error } = await supabase.functions.invoke('storj-operations', {
+      body: {
+        operation: 'delete',
+        filePath,
+      },
     });
 
-    await client.send(command);
+    if (error) throw error;
+    if (!data?.success) throw new Error('Delete failed');
   },
 
   async deleteFiles(filePaths: string[]): Promise<void> {
-    // Delete files sequentially
-    for (const filePath of filePaths) {
-      await this.deleteFile(filePath);
-    }
+    const { data, error } = await supabase.functions.invoke('storj-operations', {
+      body: {
+        operation: 'delete-multiple',
+        files: filePaths,
+      },
+    });
+
+    if (error) throw error;
+    if (!data?.success) throw new Error('Delete failed');
   },
 };

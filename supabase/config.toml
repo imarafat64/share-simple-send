@@ -1,1 +1,4 @@
 project_id = "bohvzdjyftonkemuvaic"
+
+[functions.storj-operations]
+verify_jwt = false
