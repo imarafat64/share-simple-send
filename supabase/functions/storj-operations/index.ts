@@ -14,8 +14,14 @@ const createStorjClient = () => {
   const accessKeyId = Deno.env.get('STORJ_ACCESS_KEY_ID');
   const secretAccessKey = Deno.env.get('STORJ_SECRET_ACCESS_KEY');
   
+  console.log('Checking Storj credentials...');
+  console.log('Access Key ID present:', !!accessKeyId);
+  console.log('Secret Access Key present:', !!secretAccessKey);
+  
   if (!accessKeyId || !secretAccessKey) {
-    throw new Error('Storj credentials not configured');
+    const errorMsg = 'Storj credentials not configured. Please add STORJ_ACCESS_KEY_ID and STORJ_SECRET_ACCESS_KEY secrets in Supabase Dashboard > Settings > Edge Functions';
+    console.error(errorMsg);
+    throw new Error(errorMsg);
   }
   
   return new S3Client({
