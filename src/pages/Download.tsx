@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { storjService } from '@/lib/storj';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from '@/hooks/use-toast';
@@ -94,12 +95,8 @@ const Download = () => {
 
     setDownloading(true);
     try {
-      // Get download URL from storage
-      const { data, error } = await supabase.storage
-        .from('files')
-        .download(file.storage_path);
-
-      if (error) throw error;
+      // Download file from Storj
+      const data = await storjService.downloadFile(file.storage_path);
 
       // Create download link
       const url = URL.createObjectURL(data);
@@ -144,11 +141,7 @@ const Download = () => {
       
       // Download all files and add them to zip
       for (const file of files) {
-        const { data, error } = await supabase.storage
-          .from('files')
-          .download(file.storage_path);
-
-        if (error) throw error;
+        const data = await storjService.downloadFile(file.storage_path);
         zip.file(file.filename, data);
       }
 

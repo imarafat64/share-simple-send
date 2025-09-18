@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { storjService } from '@/lib/storj';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from '@/hooks/use-toast';
@@ -156,12 +157,8 @@ const Dashboard = () => {
         const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
         const filePath = `${user.id}/${fileName}`;
 
-        // Upload file to storage
-        const { error: uploadError } = await supabase.storage
-          .from('files')
-          .upload(filePath, file);
-
-        if (uploadError) throw uploadError;
+        // Upload file to Storj
+        await storjService.uploadFile(file, filePath);
 
         // Save file metadata to database
         const { error: dbError } = await supabase
@@ -216,13 +213,9 @@ const Dashboard = () => {
 
   const deleteFileBatch = async (batch: FileBatch) => {
     try {
-      // Delete all files in the batch from storage
+      // Delete all files in the batch from Storj
       const storagePaths = batch.files.map(file => file.storage_path);
-      const { error: storageError } = await supabase.storage
-        .from('files')
-        .remove(storagePaths);
-
-      if (storageError) throw storageError;
+      await storjService.deleteFiles(storagePaths);
 
       // Delete all files in the batch from database
       const fileIds = batch.files.map(file => file.id);
