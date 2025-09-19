@@ -1,3 +1,4 @@
+import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from "npm:@aws-sdk/client-s3@3.450.0";
 
@@ -26,7 +27,7 @@ const createStorjClient = () => {
   
   return new S3Client({
     endpoint: STORJ_ENDPOINT,
-    region: 'us1',
+    region: 'us-east-1',
     credentials: {
       accessKeyId,
       secretAccessKey,
@@ -58,7 +59,6 @@ serve(async (req) => {
           Key: filePath,
           Body: buffer,
           ContentType: contentType,
-          ContentLength: size,
         });
 
         await client.send(command);
