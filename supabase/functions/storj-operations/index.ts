@@ -1,6 +1,6 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from "npm:@aws-sdk/client-s3@3.450.0";
+import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand, DeleteObjectsCommand, ListObjectVersionsCommand } from "npm:@aws-sdk/client-s3@3.450.0";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -35,6 +35,57 @@ const createStorjClient = () => {
     forcePathStyle: true,
   });
 };
+
+// Permanently remove all versions (and delete markers) for a key
+async function deleteAllVersions(client: S3Client, key: string): Promise<void> {
+  try {
+    let isTruncated = true;
+    let KeyMarker: string | undefined = undefined;
+    let VersionIdMarker: string | undefined = undefined;
+    const objectsToDelete: { Key: string; VersionId: string }[] = [];
+
+    while (isTruncated) {
+      const list = await client.send(new ListObjectVersionsCommand({
+        Bucket: STORJ_BUCKET,
+        Prefix: key,
+        KeyMarker,
+        VersionIdMarker,
+      }));
+
+      const versions = (list.Versions || []).filter(v => v.Key === key && v.VersionId);
+      const deleteMarkers = (list.DeleteMarkers || []).filter(m => m.Key === key && m.VersionId);
+
+      for (const v of versions) {
+        if (v.VersionId) objectsToDelete.push({ Key: key, VersionId: v.VersionId });
+      }
+      for (const m of deleteMarkers) {
+        if (m.VersionId) objectsToDelete.push({ Key: key, VersionId: m.VersionId });
+      }
+
+      isTruncated = !!list.IsTruncated;
+      KeyMarker = list.NextKeyMarker;
+      VersionIdMarker = list.NextVersionIdMarker;
+    }
+
+    if (objectsToDelete.length === 0) {
+      // Bucket may be unversioned; do a standard delete
+      await client.send(new DeleteObjectCommand({ Bucket: STORJ_BUCKET, Key: key }));
+      return;
+    }
+
+    // S3 DeleteObjects supports up to 1000 per call; chunk just in case
+    for (let i = 0; i < objectsToDelete.length; i += 1000) {
+      const chunk = objectsToDelete.slice(i, i + 1000);
+      await client.send(new DeleteObjectsCommand({
+        Bucket: STORJ_BUCKET,
+        Delete: { Objects: chunk, Quiet: true },
+      }));
+    }
+  } catch (err) {
+    console.error('Failed to delete all versions for key:', key, err);
+    throw err;
+  }
+}
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -118,13 +169,7 @@ serve(async (req) => {
       }
 
       case 'delete': {
-        const command = new DeleteObjectCommand({
-          Bucket: STORJ_BUCKET,
-          Key: filePath,
-        });
-
-        await client.send(command);
-        
+        await deleteAllVersions(client, filePath);
         return new Response(
           JSON.stringify({ success: true }),
           { 
@@ -135,13 +180,9 @@ serve(async (req) => {
       }
 
       case 'delete-multiple': {
-        // Delete files sequentially
+        // Permanently delete all versions for each file
         for (const path of files) {
-          const command = new DeleteObjectCommand({
-            Bucket: STORJ_BUCKET,
-            Key: path,
-          });
-          await client.send(command);
+          await deleteAllVersions(client, path);
         }
         
         return new Response(
