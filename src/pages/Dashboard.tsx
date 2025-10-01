@@ -8,6 +8,7 @@ import { toast } from '@/hooks/use-toast';
 import { User } from '@supabase/supabase-js';
 import { Upload, Download, Copy, LogOut, Share, Trash2, Home } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { Progress } from '@/components/ui/progress';
 
 interface FileData {
   id: string;
@@ -34,6 +35,7 @@ const Dashboard = () => {
   const [fileBatches, setFileBatches] = useState<FileBatch[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<{ [key: string]: number }>({});
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -148,6 +150,8 @@ const Dashboard = () => {
     if (!files || files.length === 0 || !user) return;
 
     setUploading(true);
+    setUploadProgress({});
+    
     try {
       // Generate batch_id for multiple files
       const batchId = files.length > 1 ? crypto.randomUUID() : null;
@@ -157,8 +161,13 @@ const Dashboard = () => {
         const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
         const filePath = `${user.id}/${fileName}`;
 
-        // Upload file to Storj
-        await storjService.uploadFile(file, filePath);
+        // Upload file to Storj with progress tracking
+        await storjService.uploadFile(file, filePath, (progress) => {
+          setUploadProgress(prev => ({
+            ...prev,
+            [file.name]: progress
+          }));
+        });
 
         // Save file metadata to database
         const { error: dbError } = await supabase
@@ -192,6 +201,7 @@ const Dashboard = () => {
       });
     } finally {
       setUploading(false);
+      setUploadProgress({});
       event.target.value = '';
     }
   };
@@ -335,8 +345,16 @@ const Dashboard = () => {
                   className="cursor-pointer text-sm"
                 />
                 {uploading && (
-                  <div className="text-sm text-muted-foreground">
-                    Uploading file...
+                  <div className="space-y-3 mt-4">
+                    {Object.entries(uploadProgress).map(([filename, progress]) => (
+                      <div key={filename} className="space-y-2">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground truncate max-w-[70%]">{filename}</span>
+                          <span className="text-primary font-medium">{progress}%</span>
+                        </div>
+                        <Progress value={progress} className="h-2" />
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>

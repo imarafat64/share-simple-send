@@ -2,7 +2,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 // Storj service that uses edge function
 export const storjService = {
-  async uploadFile(file: File, filePath: string): Promise<void> {
+  async uploadFile(file: File, filePath: string, onProgress?: (progress: number) => void): Promise<void> {
     // Convert file to base64 for transmission in chunks to avoid stack overflow
     const buffer = await file.arrayBuffer();
     const uint8Array = new Uint8Array(buffer);
@@ -14,9 +14,17 @@ export const storjService = {
     for (let i = 0; i < uint8Array.length; i += chunkSize) {
       const chunk = uint8Array.slice(i, i + chunkSize);
       binaryString += String.fromCharCode(...chunk);
+      
+      // Report progress during base64 conversion (0-50%)
+      if (onProgress) {
+        const progress = Math.floor((i / uint8Array.length) * 50);
+        onProgress(progress);
+      }
     }
     
     const base64 = btoa(binaryString);
+    
+    if (onProgress) onProgress(50); // Conversion complete
     
     const { data, error } = await supabase.functions.invoke('storj-operations', {
       body: {
@@ -28,11 +36,14 @@ export const storjService = {
       },
     });
 
+    if (onProgress) onProgress(100); // Upload complete
+    
     if (error) throw error;
     if (!data?.success) throw new Error('Upload failed');
   },
 
-  async downloadFile(filePath: string): Promise<Blob> {
+  async downloadFile(filePath: string, onProgress?: (progress: number) => void): Promise<Blob> {
+    if (onProgress) onProgress(10);
     const { data, error } = await supabase.functions.invoke('storj-operations', {
       body: {
         operation: 'download',
@@ -40,6 +51,8 @@ export const storjService = {
       },
     });
 
+    if (onProgress) onProgress(50);
+    
     if (error) throw error;
     if (!data?.success) throw new Error('Download failed');
     
@@ -48,7 +61,15 @@ export const storjService = {
     const bytes = new Uint8Array(binaryString.length);
     for (let i = 0; i < binaryString.length; i++) {
       bytes[i] = binaryString.charCodeAt(i);
+      
+      // Report progress during conversion (50-100%)
+      if (onProgress && i % 10000 === 0) {
+        const progress = 50 + Math.floor((i / binaryString.length) * 50);
+        onProgress(progress);
+      }
     }
+    
+    if (onProgress) onProgress(100);
     
     return new Blob([bytes], { type: data.contentType });
   },

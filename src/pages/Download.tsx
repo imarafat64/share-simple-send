@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { toast } from '@/hooks/use-toast';
 import { Download as DownloadIcon, FileIcon, Home, Package } from 'lucide-react';
 import JSZip from 'jszip';
+import { Progress } from '@/components/ui/progress';
 
 interface FileData {
   id: string;
@@ -25,6 +26,7 @@ const Download = () => {
   const [files, setFiles] = useState<FileData[]>([]);
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState(false);
+  const [downloadProgress, setDownloadProgress] = useState(0);
   const [notFound, setNotFound] = useState(false);
   const isBatch = !!batchId;
 
@@ -94,9 +96,13 @@ const Download = () => {
     if (!file) return;
 
     setDownloading(true);
+    setDownloadProgress(0);
+    
     try {
-      // Download file from Storj
-      const data = await storjService.downloadFile(file.storage_path);
+      // Download file from Storj with progress tracking
+      const data = await storjService.downloadFile(file.storage_path, (progress) => {
+        setDownloadProgress(progress);
+      });
 
       // Create download link
       const url = URL.createObjectURL(data);
@@ -115,8 +121,8 @@ const Download = () => {
         .eq('id', file.id);
 
       toast({
-        title: "Download started",
-        description: "Your file download has started"
+        title: "Download complete",
+        description: "Your file has been downloaded"
       });
 
       // Refresh file data to show updated download count
@@ -129,6 +135,7 @@ const Download = () => {
       });
     } finally {
       setDownloading(false);
+      setDownloadProgress(0);
     }
   };
 
@@ -136,17 +143,30 @@ const Download = () => {
     if (files.length === 0) return;
 
     setDownloading(true);
+    setDownloadProgress(0);
+    
     try {
       const zip = new JSZip();
       
       // Download all files and add them to zip
-      for (const file of files) {
-        const data = await storjService.downloadFile(file.storage_path);
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const fileProgress = Math.floor((i / files.length) * 80);
+        setDownloadProgress(fileProgress);
+        
+        const data = await storjService.downloadFile(file.storage_path, (progress) => {
+          const overallProgress = fileProgress + Math.floor((progress / 100) * (80 / files.length));
+          setDownloadProgress(overallProgress);
+        });
         zip.file(file.filename, data);
       }
 
+      setDownloadProgress(85);
+      
       // Generate zip file
       const zipBlob = await zip.generateAsync({ type: 'blob' });
+      
+      setDownloadProgress(95);
       
       // Create download link for zip
       const url = URL.createObjectURL(zipBlob);
@@ -166,9 +186,11 @@ const Download = () => {
           .eq('id', file.id);
       }
 
+      setDownloadProgress(100);
+
       toast({
-        title: "Download started",
-        description: `Downloading ${files.length} files as ZIP archive`
+        title: "Download complete",
+        description: `Downloaded ${files.length} files as ZIP archive`
       });
 
       // Refresh batch data
@@ -181,6 +203,7 @@ const Download = () => {
       });
     } finally {
       setDownloading(false);
+      setDownloadProgress(0);
     }
   };
 
@@ -269,6 +292,16 @@ const Download = () => {
                 Downloaded {files.reduce((sum, f) => sum + f.download_count, 0)} times
               </div>
               
+              {downloading && (
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Preparing files...</span>
+                    <span className="text-primary font-medium">{downloadProgress}%</span>
+                  </div>
+                  <Progress value={downloadProgress} className="h-2" />
+                </div>
+              )}
+              
               <Button 
                 onClick={handleBatchDownload} 
                 disabled={downloading}
@@ -276,7 +309,7 @@ const Download = () => {
                 size="lg"
               >
                 <DownloadIcon className="w-4 h-4 mr-2" />
-                {downloading ? 'Creating ZIP...' : 'Download All Files'}
+                {downloading ? `Creating ZIP ${downloadProgress}%` : 'Download All Files'}
               </Button>
             </CardContent>
           </Card>
@@ -296,6 +329,16 @@ const Download = () => {
                 Downloaded {file?.download_count} times
               </div>
               
+              {downloading && (
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Downloading...</span>
+                    <span className="text-primary font-medium">{downloadProgress}%</span>
+                  </div>
+                  <Progress value={downloadProgress} className="h-2" />
+                </div>
+              )}
+              
               <Button 
                 onClick={handleDownload} 
                 disabled={downloading}
@@ -303,7 +346,7 @@ const Download = () => {
                 size="lg"
               >
                 <DownloadIcon className="w-4 h-4 mr-2" />
-                {downloading ? 'Downloading...' : 'Download File'}
+                {downloading ? `Downloading ${downloadProgress}%` : 'Download File'}
               </Button>
             </CardContent>
           </Card>
