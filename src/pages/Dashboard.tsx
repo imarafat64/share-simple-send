@@ -241,6 +241,31 @@ const Dashboard = () => {
     }
   };
 
+  const deleteSingleFile = async (file: FileData) => {
+    try {
+      await storjService.deleteFile(file.storage_path);
+      const { error: dbError } = await supabase
+        .from('files')
+        .delete()
+        .eq('id', file.id);
+
+      if (dbError) throw dbError;
+
+      toast({
+        title: 'Success',
+        description: `${file.filename} deleted successfully!`
+      });
+
+      await loadFiles();
+    } catch (error) {
+      toast({
+        title: 'Delete failed',
+        description: error instanceof Error ? error.message : 'Failed to delete file',
+        variant: 'destructive'
+      });
+    }
+  };
+
   const formatFileSize = (bytes: number) => {
     if (bytes === 0) return '0 Bytes';
     const k = 1024;
@@ -348,8 +373,16 @@ const Dashboard = () => {
                             </h3>
                             <div className="text-xs text-muted-foreground mt-1 space-y-1">
                               {batch.files.map((file, index) => (
-                                <div key={file.id} className="truncate">
-                                  {index + 1}. {file.filename}
+                                <div key={file.id} className="flex items-center justify-between gap-2">
+                                  <div className="truncate">{index + 1}. {file.filename}</div>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => deleteSingleFile(file)}
+                                    aria-label={`Delete ${file.filename}`}
+                                  >
+                                    <Trash2 className="w-3 h-3" />
+                                  </Button>
                                 </div>
                               ))}
                             </div>
