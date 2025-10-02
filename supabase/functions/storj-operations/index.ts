@@ -1,5 +1,6 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import { encode as base64Encode, decode as base64Decode } from "https://deno.land/std@0.168.0/encoding/base64.ts";
 import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand, DeleteObjectsCommand, ListObjectVersionsCommand } from "npm:@aws-sdk/client-s3@3.450.0";
 
 const corsHeaders = {
@@ -102,8 +103,8 @@ serve(async (req) => {
 
     switch (operation) {
       case 'upload': {        
-        // Convert base64 back to file data
-        const buffer = Uint8Array.from(atob(fileData), c => c.charCodeAt(0));
+        // Convert base64 back to file data safely
+        const buffer = base64Decode(fileData);
         
         const command = new PutObjectCommand({
           Bucket: STORJ_BUCKET,
@@ -152,14 +153,8 @@ serve(async (req) => {
           offset += chunk.length;
         }
         
-        // Convert to base64 in chunks to avoid stack overflow
-        const chunkSize = 65536; // 64KB chunks
-        let base64 = '';
-        for (let i = 0; i < fullArray.length; i += chunkSize) {
-          const chunkEnd = Math.min(i + chunkSize, fullArray.length);
-          const slice = fullArray.slice(i, chunkEnd);
-          base64 += btoa(String.fromCharCode(...slice));
-        }
+        // Encode to base64 safely without argument expansion
+        const base64 = base64Encode(fullArray);
         
         return new Response(
           JSON.stringify({ 
