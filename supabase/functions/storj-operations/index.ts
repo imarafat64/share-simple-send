@@ -152,8 +152,14 @@ serve(async (req) => {
           offset += chunk.length;
         }
         
-        // Convert to base64
-        const base64 = btoa(String.fromCharCode(...fullArray));
+        // Convert to base64 in chunks to avoid stack overflow
+        const chunkSize = 65536; // 64KB chunks
+        let base64 = '';
+        for (let i = 0; i < fullArray.length; i += chunkSize) {
+          const chunkEnd = Math.min(i + chunkSize, fullArray.length);
+          const slice = fullArray.slice(i, chunkEnd);
+          base64 += btoa(String.fromCharCode(...slice));
+        }
         
         return new Response(
           JSON.stringify({ 
