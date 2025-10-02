@@ -329,10 +329,10 @@ const Dashboard = () => {
             <CardHeader className="pb-4">
               <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
                 <Upload className="w-5 h-5" />
-                Upload File
+                Upload Files
               </CardTitle>
               <CardDescription className="text-sm">
-                Upload one or multiple files to share with others
+                Upload any file type - images, videos, documents, PDFs, executables, text files, and more
               </CardDescription>
             </CardHeader>
             <CardContent className="pt-0">
