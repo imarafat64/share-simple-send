@@ -9,16 +9,20 @@ export const storjService = {
     
     // Convert to base64 in chunks to avoid maximum call stack size exceeded
     let binaryString = '';
-    const chunkSize = 1024; // Process 1KB at a time
+    const chunkSize = 8192; // Process 8KB at a time for better performance
+    let lastReportedProgress = -1;
     
     for (let i = 0; i < uint8Array.length; i += chunkSize) {
       const chunk = uint8Array.slice(i, i + chunkSize);
       binaryString += String.fromCharCode(...chunk);
       
-      // Report progress during base64 conversion (0-50%)
+      // Throttle progress updates - only report when progress changes by at least 2%
       if (onProgress) {
         const progress = Math.floor((i / uint8Array.length) * 50);
-        onProgress(progress);
+        if (progress - lastReportedProgress >= 2) {
+          onProgress(progress);
+          lastReportedProgress = progress;
+        }
       }
     }
     
@@ -56,16 +60,22 @@ export const storjService = {
     if (error) throw error;
     if (!data?.success) throw new Error('Download failed');
     
-    // Convert base64 back to blob
+    // Convert base64 back to blob with throttled progress updates
     const binaryString = atob(data.data);
     const bytes = new Uint8Array(binaryString.length);
+    let lastReportedProgress = 50;
+    const updateThreshold = Math.max(1, Math.floor(binaryString.length / 50)); // Update ~50 times max
+    
     for (let i = 0; i < binaryString.length; i++) {
       bytes[i] = binaryString.charCodeAt(i);
       
-      // Report progress during conversion (50-100%)
-      if (onProgress && i % 10000 === 0) {
+      // Throttle progress updates to reduce re-renders
+      if (onProgress && i % updateThreshold === 0) {
         const progress = 50 + Math.floor((i / binaryString.length) * 50);
-        onProgress(progress);
+        if (progress - lastReportedProgress >= 1) {
+          onProgress(progress);
+          lastReportedProgress = progress;
+        }
       }
     }
     
