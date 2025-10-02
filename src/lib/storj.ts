@@ -9,17 +9,17 @@ export const storjService = {
     
     // Convert to base64 in chunks to avoid maximum call stack size exceeded
     let binaryString = '';
-    const chunkSize = 8192; // Process 8KB at a time for better performance
+    const chunkSize = 65536; // Process 64KB at a time for maximum performance
     let lastReportedProgress = -1;
     
     for (let i = 0; i < uint8Array.length; i += chunkSize) {
       const chunk = uint8Array.slice(i, i + chunkSize);
       binaryString += String.fromCharCode(...chunk);
       
-      // Throttle progress updates - only report when progress changes by at least 2%
+      // Throttle progress updates - only report when progress changes by at least 5%
       if (onProgress) {
         const progress = Math.floor((i / uint8Array.length) * 50);
-        if (progress - lastReportedProgress >= 2) {
+        if (progress - lastReportedProgress >= 5) {
           onProgress(progress);
           lastReportedProgress = progress;
         }
@@ -64,15 +64,15 @@ export const storjService = {
     const binaryString = atob(data.data);
     const bytes = new Uint8Array(binaryString.length);
     let lastReportedProgress = 50;
-    const updateThreshold = Math.max(1, Math.floor(binaryString.length / 50)); // Update ~50 times max
+    const updateThreshold = Math.max(1, Math.floor(binaryString.length / 20)); // Update ~20 times max
     
     for (let i = 0; i < binaryString.length; i++) {
       bytes[i] = binaryString.charCodeAt(i);
       
-      // Throttle progress updates to reduce re-renders
+      // Throttle progress updates to reduce re-renders (5% increments)
       if (onProgress && i % updateThreshold === 0) {
         const progress = 50 + Math.floor((i / binaryString.length) * 50);
-        if (progress - lastReportedProgress >= 1) {
+        if (progress - lastReportedProgress >= 5) {
           onProgress(progress);
           lastReportedProgress = progress;
         }
