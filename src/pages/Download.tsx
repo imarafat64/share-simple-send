@@ -99,12 +99,12 @@ const Download = () => {
     setDownloadProgress(0);
     
     try {
-      // Download file from Storj with progress tracking
+      // Try streaming download via pre-signed URL
       const data = await storjService.downloadFile(file.storage_path, (progress) => {
         setDownloadProgress(progress);
       });
 
-      // Create download link
+      // Create download link from blob
       const url = URL.createObjectURL(data);
       const a = document.createElement('a');
       a.href = url;
@@ -113,30 +113,41 @@ const Download = () => {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-
-      // Update download count
-      await supabase
-        .from('files')
-        .update({ download_count: file.download_count + 1 })
-        .eq('id', file.id);
-
-      toast({
-        title: "Download complete",
-        description: "Your file has been downloaded"
-      });
-
-      // Refresh file data to show updated download count
-      await loadFile();
-    } catch (error) {
-      toast({
-        title: "Download failed",
-        description: "Failed to download file",
-        variant: "destructive"
-      });
+    } catch (err) {
+      // Fallback: direct download using pre-signed URL to avoid CORS/body limits
+      try {
+        const url = await storjService.getDownloadUrl(file.storage_path);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = file.filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      } catch (fallbackErr) {
+        toast({
+          title: "Download failed",
+          description: "Failed to download file",
+          variant: "destructive"
+        });
+        return;
+      }
     } finally {
       setDownloading(false);
       setDownloadProgress(0);
     }
+
+    // Update download count on success
+    try {
+      await supabase
+        .from('files')
+        .update({ download_count: file.download_count + 1 })
+        .eq('id', file.id);
+      toast({
+        title: "Download complete",
+        description: "Your file has been downloaded"
+      });
+      await loadFile();
+    } catch {}
   };
 
   const handleBatchDownload = async () => {

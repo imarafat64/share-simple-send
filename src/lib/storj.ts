@@ -47,41 +47,48 @@ export const storjService = {
   },
 
   async downloadFile(filePath: string, onProgress?: (progress: number) => void): Promise<Blob> {
-    if (onProgress) onProgress(10);
+    // Get a short-lived pre-signed URL from the edge function and stream it client-side
     const { data, error } = await supabase.functions.invoke('storj-operations', {
       body: {
-        operation: 'download',
+        operation: 'get-download-url',
         filePath,
       },
     });
 
-    if (onProgress) onProgress(50);
-    
     if (error) throw error;
-    if (!data?.success) throw new Error('Download failed');
-    
-    // Convert base64 back to blob with throttled progress updates
-    const binaryString = atob(data.data);
-    const bytes = new Uint8Array(binaryString.length);
-    let lastReportedProgress = 50;
-    const updateThreshold = Math.max(1, Math.floor(binaryString.length / 20)); // Update ~20 times max
-    
-    for (let i = 0; i < binaryString.length; i++) {
-      bytes[i] = binaryString.charCodeAt(i);
-      
-      // Throttle progress updates to reduce re-renders (5% increments)
-      if (onProgress && i % updateThreshold === 0) {
-        const progress = 50 + Math.floor((i / binaryString.length) * 50);
-        if (progress - lastReportedProgress >= 5) {
-          onProgress(progress);
-          lastReportedProgress = progress;
+    if (!data?.success || !data?.url) throw new Error('Failed to get download URL');
+
+    const res = await fetch(data.url);
+    if (!res.ok) throw new Error('Failed to fetch file');
+
+    const total = Number(res.headers.get('Content-Length')) || 0;
+    const contentType = res.headers.get('Content-Type') || 'application/octet-stream';
+
+    if (!res.body) {
+      // Fallback when streams are not available
+      const blob = await res.blob();
+      if (onProgress) onProgress(100);
+      return blob;
+    }
+
+    const reader = res.body.getReader();
+    const chunks: Uint8Array[] = [];
+    let received = 0;
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (value) {
+        chunks.push(value);
+        received += value.length;
+        if (onProgress && total) {
+          onProgress(Math.min(99, Math.floor((received / total) * 100)));
         }
       }
     }
-    
+
+    const blob = new Blob(chunks, { type: contentType });
     if (onProgress) onProgress(100);
-    
-    return new Blob([bytes], { type: data.contentType });
+    return blob;
   },
 
   async deleteFile(filePath: string): Promise<void> {
@@ -106,5 +113,14 @@ export const storjService = {
 
     if (error) throw error;
     if (!data?.success) throw new Error('Delete failed');
+  },
+
+  async getDownloadUrl(filePath: string): Promise<string> {
+    const { data, error } = await supabase.functions.invoke('storj-operations', {
+      body: { operation: 'get-download-url', filePath },
+    });
+    if (error) throw error;
+    if (!data?.success || !data?.url) throw new Error('Failed to get download URL');
+    return data.url as string;
   },
 };

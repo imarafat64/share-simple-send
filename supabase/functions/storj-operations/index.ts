@@ -2,6 +2,7 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { encode as base64Encode, decode as base64Decode } from "https://deno.land/std@0.168.0/encoding/base64.ts";
 import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand, DeleteObjectsCommand, ListObjectVersionsCommand } from "npm:@aws-sdk/client-s3@3.450.0";
+import { getSignedUrl } from "npm:@aws-sdk/s3-request-presigner@3.450.0";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -191,6 +192,22 @@ serve(async (req) => {
           { 
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             status: 200 
+          }
+        );
+      }
+
+      case 'get-download-url': {
+        const command = new GetObjectCommand({
+          Bucket: STORJ_BUCKET,
+          Key: filePath,
+        });
+        // Generate short-lived pre-signed URL (10 minutes)
+        const url = await getSignedUrl(client, command, { expiresIn: 60 * 10 });
+        return new Response(
+          JSON.stringify({ success: true, url }),
+          {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 200,
           }
         );
       }
