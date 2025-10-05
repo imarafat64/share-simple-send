@@ -18,9 +18,11 @@ export type Database = {
         Row: {
           batch_id: string | null
           download_count: number | null
+          expires_at: string | null
           filename: string
           id: string
           mimetype: string
+          password_hash: string | null
           size: number
           storage_path: string
           upload_date: string | null
@@ -29,9 +31,11 @@ export type Database = {
         Insert: {
           batch_id?: string | null
           download_count?: number | null
+          expires_at?: string | null
           filename: string
           id?: string
           mimetype?: string
+          password_hash?: string | null
           size?: number
           storage_path: string
           upload_date?: string | null
@@ -40,9 +44,11 @@ export type Database = {
         Update: {
           batch_id?: string | null
           download_count?: number | null
+          expires_at?: string | null
           filename?: string
           id?: string
           mimetype?: string
+          password_hash?: string | null
           size?: number
           storage_path?: string
           upload_date?: string | null
@@ -74,14 +80,70 @@ export type Database = {
         }
         Relationships: []
       }
+      user_subscriptions: {
+        Row: {
+          created_at: string
+          id: string
+          plan_type: string
+          storage_used: number
+          stripe_customer_id: string | null
+          stripe_product_id: string | null
+          stripe_subscription_id: string | null
+          subscription_end: string | null
+          subscription_status: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          plan_type?: string
+          storage_used?: number
+          stripe_customer_id?: string | null
+          stripe_product_id?: string | null
+          stripe_subscription_id?: string | null
+          subscription_end?: string | null
+          subscription_status?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          plan_type?: string
+          storage_used?: number
+          stripe_customer_id?: string | null
+          stripe_product_id?: string | null
+          stripe_subscription_id?: string | null
+          subscription_end?: string | null
+          subscription_status?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      calculate_user_storage: {
+        Args: { p_user_id: string }
+        Returns: number
+      }
       generate_batch_id: {
         Args: Record<PropertyKey, never>
         Returns: string
+      }
+      get_user_plan_limits: {
+        Args: { p_user_id: string }
+        Returns: {
+          has_password_protection: boolean
+          max_file_size: number
+          max_storage: number
+          plan_type: string
+          retention_days: number
+        }[]
       }
     }
     Enums: {

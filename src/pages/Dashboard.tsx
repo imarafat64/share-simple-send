@@ -1,14 +1,18 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { storjService } from '@/lib/storj';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from '@/hooks/use-toast';
 import { User } from '@supabase/supabase-js';
-import { Upload, Download, Copy, LogOut, Share, Trash2, Home } from 'lucide-react';
+import { Upload, Copy, LogOut, Home, Trash2, Crown, Lock } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
+import { Label } from '@/components/ui/label';
+import { useSubscription } from '@/hooks/useSubscription';
+import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 interface FileData {
   id: string;
@@ -19,6 +23,8 @@ interface FileData {
   storage_path: string;
   mimetype: string;
   batch_id?: string;
+  password_hash?: string;
+  expires_at?: string;
 }
 
 interface FileBatch {
@@ -26,6 +32,7 @@ interface FileBatch {
   files: FileData[];
   total_size: number;
   upload_date: string;
+  has_password: boolean;
 }
 
 const Dashboard = () => {
@@ -36,7 +43,13 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<{ [key: string]: number }>({});
+  const [storageUsed, setStorageUsed] = useState(0);
+  const [passwordDialog, setPasswordDialog] = useState(false);
+  const [currentBatchId, setCurrentBatchId] = useState<string>('');
+  const [filePassword, setFilePassword] = useState('');
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const { planType, limits, loading: subLoading, checkSubscription, manageSubscription } = useSubscription();
 
   useEffect(() => {
     const checkUser = async () => {
@@ -67,8 +80,19 @@ const Dashboard = () => {
     if (user) {
       loadFiles();
       loadUsername();
+      calculateStorage();
     }
   }, [user]);
+
+  useEffect(() => {
+    if (searchParams.get('success') === 'true') {
+      toast({
+        title: 'Success!',
+        description: 'Your Pro subscription is now active!',
+      });
+      checkSubscription();
+    }
+  }, [searchParams]);
 
   const loadUsername = async () => {
     try {
@@ -83,8 +107,24 @@ const Dashboard = () => {
       if (error) throw error;
       setUsername(data?.username || '');
     } catch (error) {
-      // Fallback to email username if profile not found
       setUsername(user?.email?.split('@')[0] || '');
+    }
+  };
+
+  const calculateStorage = async () => {
+    try {
+      if (!user) return;
+      
+      const { data, error } = await supabase
+        .from('files')
+        .select('size')
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+      const total = data.reduce((sum, file) => sum + file.size, 0);
+      setStorageUsed(total);
+    } catch (error) {
+      console.error('Error calculating storage:', error);
     }
   };
 
@@ -101,7 +141,6 @@ const Dashboard = () => {
       if (error) throw error;
       setFiles(data || []);
 
-      // Group files by batch_id
       const batchMap = new Map<string, FileData[]>();
       const singleFiles: FileData[] = [];
 
@@ -120,16 +159,17 @@ const Dashboard = () => {
         batch_id,
         files,
         total_size: files.reduce((sum, file) => sum + file.size, 0),
-        upload_date: files[0].upload_date
+        upload_date: files[0].upload_date,
+        has_password: files.some(f => f.password_hash)
       }));
 
-      // Add single files as individual batches
       singleFiles.forEach(file => {
         batches.push({
           batch_id: file.id,
           files: [file],
           total_size: file.size,
-          upload_date: file.upload_date
+          upload_date: file.upload_date,
+          has_password: !!file.password_hash
         });
       });
 
@@ -145,23 +185,48 @@ const Dashboard = () => {
     }
   };
 
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files;
-    if (!files || files.length === 0 || !user) return;
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>, password?: string) => {
+    const selectedFiles = event.target.files;
+    if (!selectedFiles || selectedFiles.length === 0 || !user) return;
+
+    // Check plan limits
+    const totalSize = Array.from(selectedFiles).reduce((sum, file) => sum + file.size, 0);
+    
+    if (storageUsed + totalSize > limits.maxStorage) {
+      toast({
+        title: "Storage limit exceeded",
+        description: `You need ${formatFileSize(storageUsed + totalSize - limits.maxStorage)} more storage. Upgrade to Pro for 100 GB!`,
+        variant: "destructive"
+      });
+      event.target.value = '';
+      return;
+    }
+
+    for (const file of Array.from(selectedFiles)) {
+      if (file.size > limits.maxFileSize) {
+        toast({
+          title: "File too large",
+          description: `${file.name} exceeds the ${formatFileSize(limits.maxFileSize)} limit for ${planType} plan`,
+          variant: "destructive"
+        });
+        event.target.value = '';
+        return;
+      }
+    }
 
     setUploading(true);
     setUploadProgress({});
     
     try {
-      // Generate batch_id for multiple files
-      const batchId = files.length > 1 ? crypto.randomUUID() : null;
+      const batchId = selectedFiles.length > 1 ? crypto.randomUUID() : null;
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + limits.retentionDays);
 
-      const uploadPromises = Array.from(files).map(async (file) => {
+      const uploadPromises = Array.from(selectedFiles).map(async (file) => {
         const fileExt = file.name.split('.').pop();
         const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
         const filePath = `${user.id}/${fileName}`;
 
-        // Upload file to Storj with progress tracking
         await storjService.uploadFile(file, filePath, (progress) => {
           setUploadProgress(prev => ({
             ...prev,
@@ -169,30 +234,37 @@ const Dashboard = () => {
           }));
         });
 
-        // Save file metadata to database
+        const fileData: any = {
+          user_id: user.id,
+          filename: file.name,
+          size: file.size,
+          storage_path: filePath,
+          mimetype: file.type,
+          batch_id: batchId,
+          expires_at: expiresAt.toISOString()
+        };
+
+        if (password) {
+          fileData.password_hash = btoa(password);
+        }
+
         const { error: dbError } = await supabase
           .from('files')
-          .insert({
-            user_id: user.id,
-            filename: file.name,
-            size: file.size,
-            storage_path: filePath,
-            mimetype: file.type,
-            batch_id: batchId
-          });
+          .insert(fileData);
 
         if (dbError) throw dbError;
         return file.name;
       });
 
-      const uploadedFiles = await Promise.all(uploadPromises);
+      await Promise.all(uploadPromises);
 
       toast({
         title: "Success",
-        description: `${uploadedFiles.length} file${uploadedFiles.length > 1 ? 's' : ''} uploaded successfully!`
+        description: `${selectedFiles.length} file${selectedFiles.length > 1 ? 's' : ''} uploaded successfully!`
       });
 
       await loadFiles();
+      await calculateStorage();
     } catch (error) {
       toast({
         title: "Upload failed",
@@ -221,13 +293,25 @@ const Dashboard = () => {
     });
   };
 
+  const openPasswordDialog = (batchId: string) => {
+    setCurrentBatchId(batchId);
+    setFilePassword('');
+    setPasswordDialog(true);
+  };
+
+  const handlePasswordProtectedUpload = async () => {
+    const input = document.getElementById('file-upload-password') as HTMLInputElement;
+    if (input?.files && filePassword) {
+      setPasswordDialog(false);
+      await handleFileUpload({ target: input } as any, filePassword);
+    }
+  };
+
   const deleteFileBatch = async (batch: FileBatch) => {
     try {
-      // Delete all files in the batch from Storj
       const storagePaths = batch.files.map(file => file.storage_path);
       await storjService.deleteFiles(storagePaths);
 
-      // Delete all files in the batch from database
       const fileIds = batch.files.map(file => file.id);
       const { error: dbError } = await supabase
         .from('files')
@@ -242,6 +326,7 @@ const Dashboard = () => {
       });
 
       await loadFiles();
+      await calculateStorage();
     } catch (error) {
       toast({
         title: "Delete failed",
@@ -267,6 +352,7 @@ const Dashboard = () => {
       });
 
       await loadFiles();
+      await calculateStorage();
     } catch (error) {
       toast({
         title: 'Delete failed',
@@ -288,7 +374,13 @@ const Dashboard = () => {
     return new Date(dateString).toLocaleDateString();
   };
 
-  if (loading) {
+  const getDaysUntilExpiry = (expiresAt?: string) => {
+    if (!expiresAt) return null;
+    const days = Math.ceil((new Date(expiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+    return days;
+  };
+
+  if (loading || subLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
@@ -297,6 +389,8 @@ const Dashboard = () => {
       </div>
     );
   }
+
+  const storagePercent = (storageUsed / limits.maxStorage) * 100;
 
   return (
     <div className="min-h-screen bg-background">
@@ -309,12 +403,21 @@ const Dashboard = () => {
             </Link>
           </div>
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4 w-full sm:w-auto">
+            <Badge variant={planType === 'pro' ? 'default' : 'secondary'}>
+              {planType === 'pro' ? <Crown className="w-3 h-3 mr-1" /> : null}
+              {planType === 'pro' ? 'Pro Plan' : 'Free Plan'}
+            </Badge>
             <div className="flex flex-col items-start">
               <span className="text-sm font-medium text-foreground truncate max-w-[200px] sm:max-w-none">
                 {username || user?.email?.split('@')[0]}
               </span>
               <span className="text-xs text-muted-foreground truncate max-w-[200px] sm:max-w-none">{user?.email}</span>
             </div>
+            {planType === 'pro' && (
+              <Button variant="outline" onClick={manageSubscription} size="sm">
+                Manage
+              </Button>
+            )}
             <Button variant="outline" onClick={handleSignOut} size="sm" className="w-full sm:w-auto">
               <LogOut className="w-4 h-4 mr-2" />
               Sign Out
@@ -324,6 +427,40 @@ const Dashboard = () => {
       </header>
 
       <main className="container mx-auto px-4 py-6 sm:py-8">
+        {/* Storage Usage Card */}
+        <Card className="mb-6">
+          <CardHeader>
+            <div className="flex justify-between items-center">
+              <div>
+                <CardTitle>Storage Usage</CardTitle>
+                <CardDescription>
+                  {formatFileSize(storageUsed)} of {formatFileSize(limits.maxStorage)} used
+                </CardDescription>
+              </div>
+              {planType === 'free' && (
+                <Button onClick={() => navigate('/pricing')} size="sm">
+                  <Crown className="w-4 h-4 mr-2" />
+                  Upgrade to Pro
+                </Button>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent>
+            <Progress value={storagePercent} className="h-2" />
+            <div className="mt-4 grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <div className="text-muted-foreground">Max File Size</div>
+                <div className="font-semibold">{formatFileSize(limits.maxFileSize)}</div>
+              </div>
+              <div>
+                <div className="text-muted-foreground">Retention</div>
+                <div className="font-semibold">{limits.retentionDays} days</div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Upload Card */}
         <div className="mb-6 sm:mb-8">
           <Card>
             <CardHeader className="pb-4">
@@ -332,36 +469,63 @@ const Dashboard = () => {
                 Upload Files
               </CardTitle>
               <CardDescription className="text-sm">
-                Upload any file type - images, videos, documents, PDFs, executables, text files, and more
+                Upload any file type. {planType === 'free' && 'Upgrade to Pro for larger files and password protection!'}
               </CardDescription>
             </CardHeader>
-            <CardContent className="pt-0">
-              <div className="space-y-4">
+            <CardContent className="pt-0 space-y-4">
+              <div className="space-y-2">
                 <Input
+                  id="file-upload"
                   type="file"
                   multiple
-                  onChange={handleFileUpload}
+                  onChange={(e) => handleFileUpload(e)}
                   disabled={uploading}
                   className="cursor-pointer text-sm"
                 />
-                {uploading && (
-                  <div className="space-y-3 mt-4">
-                    {Object.entries(uploadProgress).map(([filename, progress]) => (
-                      <div key={filename} className="space-y-2">
-                        <div className="flex justify-between text-sm">
-                          <span className="text-muted-foreground truncate max-w-[70%]">{filename}</span>
-                          <span className="text-primary font-medium">{progress}%</span>
-                        </div>
-                        <Progress value={progress} className="h-2" />
-                      </div>
-                    ))}
-                  </div>
-                )}
               </div>
+              
+              {limits.hasPasswordProtection && (
+                <div className="space-y-2">
+                  <Label htmlFor="file-upload-password">Password Protection (Pro)</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="file-upload-password"
+                      type="file"
+                      multiple
+                      onChange={(e) => {
+                        if (e.target.files && e.target.files.length > 0) {
+                          openPasswordDialog('');
+                        }
+                      }}
+                      disabled={uploading}
+                      className="cursor-pointer text-sm"
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    <Lock className="w-3 h-3 inline mr-1" />
+                    Files will require password for download
+                  </p>
+                </div>
+              )}
+
+              {uploading && (
+                <div className="space-y-3 mt-4">
+                  {Object.entries(uploadProgress).map(([filename, progress]) => (
+                    <div key={filename} className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground truncate max-w-[70%]">{filename}</span>
+                        <span className="text-primary font-medium">{progress}%</span>
+                      </div>
+                      <Progress value={progress} className="h-2" />
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
 
+        {/* Files List */}
         <div className="space-y-4">
           <h2 className="text-lg sm:text-xl font-semibold">Your Files</h2>
           
@@ -375,74 +539,127 @@ const Dashboard = () => {
             </Card>
           ) : (
             <div className="grid gap-4">
-              {fileBatches.map((batch) => (
-                <Card key={batch.batch_id}>
-                  <CardContent className="p-4 sm:p-6">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                      <div className="flex-1 min-w-0">
-                        {batch.files.length === 1 ? (
-                          <h3 className="font-semibold text-foreground text-sm sm:text-base truncate">
-                            {batch.files[0].filename}
-                          </h3>
-                        ) : (
-                          <div>
-                            <h3 className="font-semibold text-foreground text-sm sm:text-base">
-                              {batch.files.length} files uploaded together
-                            </h3>
-                            <div className="text-xs text-muted-foreground mt-1 space-y-1">
-                              {batch.files.map((file, index) => (
-                                <div key={file.id} className="flex items-center justify-between gap-2">
-                                  <div className="truncate">{index + 1}. {file.filename}</div>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => deleteSingleFile(file)}
-                                    aria-label={`Delete ${file.filename}`}
-                                  >
-                                    <Trash2 className="w-3 h-3" />
-                                  </Button>
-                                </div>
-                              ))}
+              {fileBatches.map((batch) => {
+                const daysLeft = getDaysUntilExpiry(batch.files[0]?.expires_at);
+                
+                return (
+                  <Card key={batch.batch_id}>
+                    <CardContent className="p-4 sm:p-6">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div className="flex-1 min-w-0">
+                          {batch.files.length === 1 ? (
+                            <div className="flex items-center gap-2">
+                              <h3 className="font-semibold text-foreground text-sm sm:text-base truncate">
+                                {batch.files[0].filename}
+                              </h3>
+                              {batch.has_password && (
+                                <Lock className="w-4 h-4 text-primary" />
+                              )}
+                            </div>
+                          ) : (
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <h3 className="font-semibold text-foreground text-sm sm:text-base">
+                                  {batch.files.length} files uploaded together
+                                </h3>
+                                {batch.has_password && (
+                                  <Lock className="w-4 h-4 text-primary" />
+                                )}
+                              </div>
+                              <div className="text-xs text-muted-foreground mt-1 space-y-1">
+                                {batch.files.map((file, index) => (
+                                  <div key={file.id} className="flex items-center justify-between gap-2">
+                                    <div className="truncate">{index + 1}. {file.filename}</div>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => deleteSingleFile(file)}
+                                      aria-label={`Delete ${file.filename}`}
+                                    >
+                                      <Trash2 className="w-3 h-3" />
+                                    </Button>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          <div className="text-xs sm:text-sm text-muted-foreground mt-2 space-y-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span>{formatFileSize(batch.total_size)}</span>
+                              <span>•</span>
+                              <span>Uploaded {formatDate(batch.upload_date)}</span>
+                              <span>•</span>
+                              <span>{batch.files.reduce((sum, file) => sum + file.download_count, 0)} downloads</span>
+                              {daysLeft !== null && (
+                                <>
+                                  <span>•</span>
+                                  <span className={daysLeft < 3 ? 'text-destructive font-medium' : ''}>
+                                    Expires in {daysLeft} days
+                                  </span>
+                                </>
+                              )}
                             </div>
                           </div>
-                        )}
-                        <div className="text-xs sm:text-sm text-muted-foreground mt-2 space-y-1 sm:space-y-0">
-                          <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
-                            <span>{formatFileSize(batch.total_size)}</span>
-                            <span className="hidden sm:inline">•</span>
-                            <span>Uploaded {formatDate(batch.upload_date)}</span>
-                            <span className="hidden sm:inline">•</span>
-                            <span>{batch.files.reduce((sum, file) => sum + file.download_count, 0)} downloads</span>
-                          </div>
+                        </div>
+                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => copyShareLink(batch.batch_id, batch.files.length > 1)}
+                            className="text-xs sm:text-sm"
+                          >
+                            <Copy className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                            Copy Link
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => deleteFileBatch(batch)}
+                            className="text-xs sm:text-sm"
+                          >
+                            <Trash2 className="w-3 h-3 sm:w-4 sm:h-4" />
+                          </Button>
                         </div>
                       </div>
-                      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => copyShareLink(batch.batch_id, batch.files.length > 1)}
-                          className="text-xs sm:text-sm"
-                        >
-                          <Copy className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-                          Copy Link
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => deleteFileBatch(batch)}
-                          className="text-xs sm:text-sm"
-                        >
-                          <Trash2 className="w-3 h-3 sm:w-4 sm:h-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
           )}
         </div>
       </main>
+
+      <Dialog open={passwordDialog} onOpenChange={setPasswordDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Password Protect Files</DialogTitle>
+            <DialogDescription>
+              Set a password that will be required to download these files
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
+              <Input
+                id="password"
+                type="password"
+                value={filePassword}
+                onChange={(e) => setFilePassword(e.target.value)}
+                placeholder="Enter a strong password"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPasswordDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handlePasswordProtectedUpload} disabled={!filePassword}>
+              Upload with Password
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

@@ -4,10 +4,13 @@ import { supabase } from '@/integrations/supabase/client';
 import { storjService } from '@/lib/storj';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { toast } from '@/hooks/use-toast';
-import { Download as DownloadIcon, FileIcon, Home, Package } from 'lucide-react';
+import { Download as DownloadIcon, FileIcon, Home, Package, Lock, AlertCircle } from 'lucide-react';
 import JSZip from 'jszip';
 import { Progress } from '@/components/ui/progress';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface FileData {
   id: string;
@@ -18,6 +21,9 @@ interface FileData {
   storage_path: string;
   mimetype: string;
   batch_id?: string;
+  password_hash?: string;
+  expires_at?: string;
+  user_id: string;
 }
 
 const Download = () => {
@@ -28,6 +34,10 @@ const Download = () => {
   const [downloading, setDownloading] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState(0);
   const [notFound, setNotFound] = useState(false);
+  const [requiresPassword, setRequiresPassword] = useState(false);
+  const [password, setPassword] = useState('');
+  const [passwordError, setPasswordError] = useState(false);
+  const [uploaderPlan, setUploaderPlan] = useState<'free' | 'pro'>('free');
   const isBatch = !!batchId;
 
   useEffect(() => {
@@ -37,6 +47,22 @@ const Download = () => {
       loadFile();
     }
   }, [fileId, batchId]);
+
+  const checkUploaderPlan = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('user_subscriptions')
+        .select('plan_type')
+        .eq('user_id', userId)
+        .single();
+
+      if (!error && data && (data.plan_type === 'free' || data.plan_type === 'pro')) {
+        setUploaderPlan(data.plan_type);
+      }
+    } catch (error) {
+      console.error('Error checking uploader plan:', error);
+    }
+  };
 
   const loadFile = async () => {
     try {
@@ -53,7 +79,16 @@ const Download = () => {
           throw error;
         }
       } else {
-        setFile(data);
+        // Check if file has expired
+        if (data.expires_at && new Date(data.expires_at) < new Date()) {
+          setNotFound(true);
+          // Optionally delete expired file
+          await supabase.from('files').delete().eq('id', fileId);
+        } else {
+          setFile(data);
+          setRequiresPassword(!!data.password_hash);
+          await checkUploaderPlan(data.user_id);
+        }
       }
     } catch (error) {
       toast({
@@ -79,7 +114,18 @@ const Download = () => {
       if (!data || data.length === 0) {
         setNotFound(true);
       } else {
-        setFiles(data);
+        // Check if files have expired
+        const validFiles = data.filter(file => !file.expires_at || new Date(file.expires_at) >= new Date());
+        
+        if (validFiles.length === 0) {
+          setNotFound(true);
+          // Delete expired files
+          await supabase.from('files').delete().eq('batch_id', batchId);
+        } else {
+          setFiles(validFiles);
+          setRequiresPassword(validFiles.some(f => f.password_hash));
+          await checkUploaderPlan(validFiles[0].user_id);
+        }
       }
     } catch (error) {
       toast({
@@ -92,19 +138,32 @@ const Download = () => {
     }
   };
 
+  const verifyPassword = (fileData: FileData) => {
+    if (!fileData.password_hash) return true;
+    return btoa(password) === fileData.password_hash;
+  };
+
   const handleDownload = async () => {
     if (!file) return;
+
+    if (requiresPassword && !verifyPassword(file)) {
+      setPasswordError(true);
+      toast({
+        title: "Incorrect password",
+        description: "Please enter the correct password",
+        variant: "destructive"
+      });
+      return;
+    }
 
     setDownloading(true);
     setDownloadProgress(0);
     
     try {
-      // Try streaming download via pre-signed URL
       const data = await storjService.downloadFile(file.storage_path, (progress) => {
         setDownloadProgress(progress);
       });
 
-      // Create download link from blob
       const url = URL.createObjectURL(data);
       const a = document.createElement('a');
       a.href = url;
@@ -114,7 +173,6 @@ const Download = () => {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch (err) {
-      // Fallback: direct download using pre-signed URL to avoid CORS/body limits
       try {
         const url = await storjService.getDownloadUrl(file.storage_path);
         const a = document.createElement('a');
@@ -136,7 +194,6 @@ const Download = () => {
       setDownloadProgress(0);
     }
 
-    // Update download count on success
     try {
       await supabase
         .from('files')
@@ -153,13 +210,25 @@ const Download = () => {
   const handleBatchDownload = async () => {
     if (files.length === 0) return;
 
+    if (requiresPassword) {
+      const allValid = files.every(f => verifyPassword(f));
+      if (!allValid) {
+        setPasswordError(true);
+        toast({
+          title: "Incorrect password",
+          description: "Please enter the correct password",
+          variant: "destructive"
+        });
+        return;
+      }
+    }
+
     setDownloading(true);
     setDownloadProgress(0);
     
     try {
       const zip = new JSZip();
       
-      // Download all files and add them to zip
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
         const fileProgress = Math.floor((i / files.length) * 80);
@@ -173,13 +242,9 @@ const Download = () => {
       }
 
       setDownloadProgress(85);
-      
-      // Generate zip file
       const zipBlob = await zip.generateAsync({ type: 'blob' });
-      
       setDownloadProgress(95);
       
-      // Create download link for zip
       const url = URL.createObjectURL(zipBlob);
       const a = document.createElement('a');
       a.href = url;
@@ -189,7 +254,6 @@ const Download = () => {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
 
-      // Update download count for all files
       for (const file of files) {
         await supabase
           .from('files')
@@ -204,7 +268,6 @@ const Download = () => {
         description: `Downloaded ${files.length} files as ZIP archive`
       });
 
-      // Refresh batch data
       await loadBatch();
     } catch (error) {
       toast({
@@ -250,8 +313,8 @@ const Download = () => {
             </CardTitle>
             <CardDescription>
               {isBatch 
-                ? "The file batch you're looking for doesn't exist or has been removed."
-                : "The file you're looking for doesn't exist or has been removed."
+                ? "The file batch you're looking for doesn't exist, has been removed, or has expired."
+                : "The file you're looking for doesn't exist, has been removed, or has expired."
               }
             </CardDescription>
           </CardHeader>
@@ -263,6 +326,16 @@ const Download = () => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <div className="w-full max-w-md space-y-4">
+        {uploaderPlan === 'free' && (
+          <Alert>
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              This file was uploaded with a Free plan. Files expire in 7 days. 
+              <a href="/pricing" className="underline ml-1">Upgrade to Pro</a> for 30-day retention!
+            </AlertDescription>
+          </Alert>
+        )}
+
         <div className="flex justify-center">
           <Button
             variant="outline"
@@ -281,6 +354,12 @@ const Download = () => {
               <div className="flex justify-center mb-4">
                 <Package className="w-16 h-16 text-primary" />
               </div>
+              {requiresPassword && (
+                <div className="flex items-center justify-center gap-2 text-primary mb-2">
+                  <Lock className="w-5 h-5" />
+                  <span className="text-sm font-medium">Password Protected</span>
+                </div>
+              )}
               <CardTitle className="text-xl">{files.length} Files</CardTitle>
               <CardDescription>
                 {formatFileSize(files.reduce((sum, f) => sum + f.size, 0))} • 
@@ -288,6 +367,23 @@ const Download = () => {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              {requiresPassword && (
+                <div className="space-y-2">
+                  <Label htmlFor="password">Enter Password</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    value={password}
+                    onChange={(e) => {
+                      setPassword(e.target.value);
+                      setPasswordError(false);
+                    }}
+                    placeholder="Enter password to download"
+                    className={passwordError ? 'border-destructive' : ''}
+                  />
+                </div>
+              )}
+
               <div className="space-y-2">
                 <h4 className="text-sm font-medium">Files in this batch:</h4>
                 <div className="max-h-32 overflow-y-auto space-y-1">
@@ -315,7 +411,7 @@ const Download = () => {
               
               <Button 
                 onClick={handleBatchDownload} 
-                disabled={downloading}
+                disabled={downloading || (requiresPassword && !password)}
                 className="w-full"
                 size="lg"
               >
@@ -330,12 +426,35 @@ const Download = () => {
               <div className="flex justify-center mb-4">
                 <FileIcon className="w-16 h-16 text-primary" />
               </div>
+              {requiresPassword && (
+                <div className="flex items-center justify-center gap-2 text-primary mb-2">
+                  <Lock className="w-5 h-5" />
+                  <span className="text-sm font-medium">Password Protected</span>
+                </div>
+              )}
               <CardTitle className="text-xl">{file?.filename}</CardTitle>
               <CardDescription>
                 {file && formatFileSize(file.size)} • Uploaded {file && formatDate(file.upload_date)}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              {requiresPassword && (
+                <div className="space-y-2">
+                  <Label htmlFor="password">Enter Password</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    value={password}
+                    onChange={(e) => {
+                      setPassword(e.target.value);
+                      setPasswordError(false);
+                    }}
+                    placeholder="Enter password to download"
+                    className={passwordError ? 'border-destructive' : ''}
+                  />
+                </div>
+              )}
+
               <div className="text-center text-sm text-muted-foreground">
                 Downloaded {file?.download_count} times
               </div>
@@ -352,7 +471,7 @@ const Download = () => {
               
               <Button 
                 onClick={handleDownload} 
-                disabled={downloading}
+                disabled={downloading || (requiresPassword && !password)}
                 className="w-full"
                 size="lg"
               >
