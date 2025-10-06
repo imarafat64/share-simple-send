@@ -92,8 +92,12 @@ serve(async (req) => {
       const subscription = subscriptions.data[0];
       subscriptionId = subscription.id;
       subscriptionStatus = subscription.status;
-      subscriptionEnd = new Date(subscription.current_period_end * 1000).toISOString();
-      logStep("Active subscription found", { subscriptionId, endDate: subscriptionEnd });
+      
+      // Convert Unix timestamp to ISO string
+      const periodEnd = subscription.current_period_end;
+      subscriptionEnd = new Date(Number(periodEnd) * 1000).toISOString();
+      logStep("Active subscription found", { subscriptionId, endDate: subscriptionEnd, rawPeriodEnd: periodEnd });
+      
       productId = subscription.items.data[0].price.product as string;
       logStep("Determined subscription product", { productId });
       
