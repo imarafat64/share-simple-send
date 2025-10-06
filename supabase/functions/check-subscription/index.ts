@@ -93,12 +93,21 @@ serve(async (req) => {
       subscriptionId = subscription.id;
       subscriptionStatus = subscription.status;
       
-      // Convert Unix timestamp to ISO string
-      const periodEnd = subscription.current_period_end;
-      subscriptionEnd = new Date(Number(periodEnd) * 1000).toISOString();
-      logStep("Active subscription found", { subscriptionId, endDate: subscriptionEnd, rawPeriodEnd: periodEnd });
+      // Convert Unix timestamp to ISO string with error handling
+      try {
+        const periodEnd = subscription.current_period_end;
+        if (periodEnd && typeof periodEnd === 'number') {
+          subscriptionEnd = new Date(periodEnd * 1000).toISOString();
+        } else if (periodEnd) {
+          subscriptionEnd = new Date(Number(periodEnd) * 1000).toISOString();
+        }
+        logStep("Active subscription found", { subscriptionId, endDate: subscriptionEnd, rawPeriodEnd: periodEnd });
+      } catch (dateError) {
+        logStep("Error converting date, using null", { error: String(dateError), periodEnd: subscription.current_period_end });
+        subscriptionEnd = null;
+      }
       
-      productId = subscription.items.data[0].price.product as string;
+      productId = subscription.items.data[0]?.price?.product as string || null;
       logStep("Determined subscription product", { productId });
       
       // Update user subscription to pro

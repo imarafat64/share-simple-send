@@ -8,6 +8,17 @@ const Pricing = () => {
   const { planType, subscribed, createCheckout, manageSubscription, loading } = useSubscription();
   const navigate = useNavigate();
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading subscription status...</p>
+        </div>
+      </div>
+    );
+  }
+
   const plans = [
     {
       name: 'Free',
@@ -123,9 +134,12 @@ const Pricing = () => {
           })}
         </div>
 
-        <div className="text-center mt-12">
+        <div className="text-center mt-12 space-x-4">
+          <Button variant="ghost" onClick={() => navigate('/')}>
+            Back to Home
+          </Button>
           <Button variant="ghost" onClick={() => navigate('/dashboard')}>
-            Back to Dashboard
+            Go to Dashboard
           </Button>
         </div>
       </div>
