@@ -83,25 +83,39 @@ export const useSubscription = () => {
         return;
       }
 
+      console.log('[CHECKOUT] Starting checkout process...');
+
       const { data, error } = await supabase.functions.invoke('create-checkout', {
         headers: {
           Authorization: `Bearer ${session.access_token}`,
         },
       });
 
-      if (error) throw error;
-      if (data?.error) throw new Error(typeof data.error === 'string' ? data.error : JSON.stringify(data.error));
+      console.log('[CHECKOUT] Response:', { data, error });
+
+      if (error) {
+        console.error('[CHECKOUT] Error:', error);
+        throw error;
+      }
+      
+      if (data?.error) {
+        console.error('[CHECKOUT] Data error:', data.error);
+        throw new Error(typeof data.error === 'string' ? data.error : JSON.stringify(data.error));
+      }
+      
       if (data?.url) {
-        // Open in same window so user returns to our success page
-        window.location.assign(data.url);
+        console.log('[CHECKOUT] Redirecting to:', data.url);
+        // Use window.location.href for immediate redirect
+        window.location.href = data.url;
       } else {
-        throw new Error('Checkout session not created. Please try again.');
+        console.error('[CHECKOUT] No URL in response:', data);
+        throw new Error('No checkout URL returned. Please try again.');
       }
     } catch (error) {
-      console.error('Error creating checkout:', error);
+      console.error('[CHECKOUT] Caught error:', error);
       toast({
         title: 'Error',
-        description: 'Failed to start checkout process',
+        description: error instanceof Error ? error.message : 'Failed to start checkout process',
         variant: 'destructive',
       });
     }
