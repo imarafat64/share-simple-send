@@ -86,7 +86,16 @@ export const storjService = {
       }
     }
 
-    const blob = new Blob(chunks, { type: contentType });
+    // Merge chunks to a single ArrayBuffer to satisfy strict TS DOM typings
+    const totalLength = chunks.reduce((acc, c) => acc + c.byteLength, 0);
+    const merged = new Uint8Array(totalLength);
+    let offset = 0;
+    for (const c of chunks) {
+      merged.set(c, offset);
+      offset += c.byteLength;
+    }
+
+    const blob = new Blob([merged.buffer], { type: contentType });
     if (onProgress) onProgress(100);
     return blob;
   },

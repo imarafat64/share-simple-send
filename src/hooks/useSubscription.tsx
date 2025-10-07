@@ -90,9 +90,12 @@ export const useSubscription = () => {
       });
 
       if (error) throw error;
+      if (data?.error) throw new Error(typeof data.error === 'string' ? data.error : JSON.stringify(data.error));
       if (data?.url) {
         // Open in same window so user returns to our success page
-        window.location.href = data.url;
+        window.location.assign(data.url);
+      } else {
+        throw new Error('Checkout session not created. Please try again.');
       }
     } catch (error) {
       console.error('Error creating checkout:', error);

@@ -24,15 +24,23 @@ serve(async (req) => {
     const user = data.user;
     if (!user?.email) throw new Error("User not authenticated or email not available");
 
-    const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", { 
+    const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
+    if (!stripeKey) throw new Error("STRIPE_SECRET_KEY is not set");
+    const stripe = new Stripe(stripeKey, { 
       apiVersion: "2025-08-27.basil" 
     });
 
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
-    let customerId;
-    if (customers.data.length > 0) {
-      customerId = customers.data[0].id;
-    }
+    let customerId = customers.data[0]?.id;
+
+    // Determine a safe origin for redirect URLs
+    const origin =
+      req.headers.get("origin") ||
+      req.headers.get("referer") ||
+      Deno.env.get("SITE_URL") ||
+      "http://localhost:5173";
+
+    console.log("[CREATE-CHECKOUT] Starting session", { origin, email: user.email, customerId });
 
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
@@ -44,8 +52,8 @@ serve(async (req) => {
         },
       ],
       mode: "subscription",
-      success_url: `${req.headers.get("origin")}/success`,
-      cancel_url: `${req.headers.get("origin")}/pricing`,
+      success_url: `${origin}/success`,
+      cancel_url: `${origin}/pricing`,
     });
 
     return new Response(JSON.stringify({ url: session.url }), {
