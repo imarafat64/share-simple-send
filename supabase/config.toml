@@ -3,6 +3,9 @@ project_id = "bohvzdjyftonkemuvaic"
 [functions.storj-operations]
 verify_jwt = false
 
+[functions.cleanup-expired-files]
+verify_jwt = false
+
 [functions.create-checkout]
 
 [functions.check-subscription]
