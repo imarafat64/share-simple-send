@@ -13,6 +13,7 @@ import { Label } from '@/components/ui/label';
 import { useSubscription } from '@/hooks/useSubscription';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { ExpiryCountdown } from '@/components/ExpiryCountdown';
 
 interface FileData {
   id: string;
@@ -583,22 +584,17 @@ const Dashboard = () => {
                               </div>
                             </div>
                           )}
-                          <div className="text-xs sm:text-sm text-muted-foreground mt-2 space-y-1">
+                          <div className="text-xs sm:text-sm text-muted-foreground mt-2 space-y-2">
                             <div className="flex flex-wrap items-center gap-2">
                               <span>{formatFileSize(batch.total_size)}</span>
                               <span>•</span>
                               <span>Uploaded {formatDate(batch.upload_date)}</span>
                               <span>•</span>
                               <span>{batch.files.reduce((sum, file) => sum + file.download_count, 0)} downloads</span>
-                              {daysLeft !== null && (
-                                <>
-                                  <span>•</span>
-                                  <span className={daysLeft < 3 ? 'text-destructive font-medium' : ''}>
-                                    Expires in {daysLeft} days
-                                  </span>
-                                </>
-                              )}
                             </div>
+                            {batch.files[0]?.expires_at && (
+                              <ExpiryCountdown expiresAt={batch.files[0].expires_at} />
+                            )}
                           </div>
                         </div>
                         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
