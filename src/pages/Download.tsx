@@ -7,10 +7,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from '@/hooks/use-toast';
-import { Download as DownloadIcon, FileIcon, Home, Package, Lock, AlertCircle } from 'lucide-react';
+import { Download as DownloadIcon, FileIcon, Home, Package, Lock, AlertCircle, Shield } from 'lucide-react';
 import JSZip from 'jszip';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { motion } from 'framer-motion';
 
 interface FileData {
   id: string;
@@ -79,10 +80,8 @@ const Download = () => {
           throw error;
         }
       } else {
-        // Check if file has expired
         if (data.expires_at && new Date(data.expires_at) < new Date()) {
           setNotFound(true);
-          // Optionally delete expired file
           await supabase.from('files').delete().eq('id', fileId);
         } else {
           setFile(data);
@@ -114,12 +113,10 @@ const Download = () => {
       if (!data || data.length === 0) {
         setNotFound(true);
       } else {
-        // Check if files have expired
         const validFiles = data.filter(file => !file.expires_at || new Date(file.expires_at) >= new Date());
         
         if (validFiles.length === 0) {
           setNotFound(true);
-          // Delete expired files
           await supabase.from('files').delete().eq('batch_id', batchId);
         } else {
           setFiles(validFiles);
@@ -296,9 +293,14 @@ const Download = () => {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="text-center">
-          <div className="text-lg">Loading file...</div>
-        </div>
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="text-center"
+        >
+          <div className="w-12 h-12 border-4 border-primary/30 border-t-primary rounded-full animate-spin mx-auto mb-4"></div>
+          <div className="text-lg text-muted-foreground">Loading file...</div>
+        </motion.div>
       </div>
     );
   }
@@ -306,19 +308,34 @@ const Download = () => {
   if (notFound || (!file && !isBatch) || (isBatch && files.length === 0)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
-        <Card className="w-full max-w-md">
-          <CardHeader className="text-center">
-            <CardTitle className="text-xl text-destructive">
-              {isBatch ? "Batch Not Found" : "File Not Found"}
-            </CardTitle>
-            <CardDescription>
-              {isBatch 
-                ? "The file batch you're looking for doesn't exist, has been removed, or has expired."
-                : "The file you're looking for doesn't exist, has been removed, or has expired."
-              }
-            </CardDescription>
-          </CardHeader>
-        </Card>
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+        >
+          <Card className="glass w-full max-w-md">
+            <CardHeader className="text-center">
+              <AlertCircle className="w-16 h-16 text-destructive mx-auto mb-4" />
+              <CardTitle className="text-xl text-destructive">
+                {isBatch ? "Batch Not Found" : "File Not Found"}
+              </CardTitle>
+              <CardDescription>
+                {isBatch 
+                  ? "The file batch you're looking for doesn't exist, has been removed, or has expired."
+                  : "The file you're looking for doesn't exist, has been removed, or has expired."
+                }
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button
+                onClick={() => window.location.href = '/'}
+                className="w-full bg-gradient-to-r from-primary to-amber-400"
+              >
+                <Home className="w-4 h-4 mr-2" />
+                Go to Homepage
+              </Button>
+            </CardContent>
+          </Card>
+        </motion.div>
       </div>
     );
   }
@@ -327,159 +344,213 @@ const Download = () => {
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <div className="w-full max-w-md space-y-4">
         {uploaderPlan === 'free' && (
-          <Alert>
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>
-              This file was uploaded with a Free plan. Files expire in 7 days. 
-              <a href="/pricing" className="underline ml-1">Upgrade to Pro</a> for 30-day retention!
-            </AlertDescription>
-          </Alert>
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            <Alert className="glass border-primary/20">
+              <AlertCircle className="h-4 w-4 text-primary" />
+              <AlertDescription className="text-sm">
+                Free plan files expire in 7 days. 
+                <a href="/pricing" className="underline ml-1 text-primary hover:text-primary/80">Upgrade to Pro</a> for 30-day retention!
+              </AlertDescription>
+            </Alert>
+          </motion.div>
         )}
 
-        <div className="flex justify-center">
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex justify-center"
+        >
           <Button
             variant="outline"
             size="sm"
             onClick={() => window.location.href = '/'}
-            className="flex items-center gap-2"
+            className="border-primary/20 hover:border-primary/40 hover:bg-primary/10"
           >
-            <Home className="w-4 h-4" />
+            <Home className="w-4 h-4 mr-2" />
             Create Account to Share Files
           </Button>
-        </div>
+        </motion.div>
         
         {isBatch ? (
-          <Card className="w-full">
-            <CardHeader className="text-center">
-              <div className="flex justify-center mb-4">
-                <Package className="w-16 h-16 text-primary" />
-              </div>
-              {requiresPassword && (
-                <div className="flex items-center justify-center gap-2 text-primary mb-2">
-                  <Lock className="w-5 h-5" />
-                  <span className="text-sm font-medium">Password Protected</span>
-                </div>
-              )}
-              <CardTitle className="text-xl">{files.length} Files</CardTitle>
-              <CardDescription>
-                {formatFileSize(files.reduce((sum, f) => sum + f.size, 0))} • 
-                Uploaded {formatDate(files[0]?.upload_date)}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {requiresPassword && (
-                <div className="space-y-2">
-                  <Label htmlFor="password">Enter Password</Label>
-                  <Input
-                    id="password"
-                    type="password"
-                    value={password}
-                    onChange={(e) => {
-                      setPassword(e.target.value);
-                      setPasswordError(false);
-                    }}
-                    placeholder="Enter password to download"
-                    className={passwordError ? 'border-destructive' : ''}
-                  />
-                </div>
-              )}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            <Card className="glass border-primary/20">
+              <CardHeader className="text-center">
+                <motion.div 
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ type: "spring", stiffness: 200 }}
+                  className="flex justify-center mb-4"
+                >
+                  <div className="p-4 rounded-2xl bg-primary/10 border border-primary/20">
+                    <Package className="w-12 h-12 text-primary" />
+                  </div>
+                </motion.div>
+                {requiresPassword && (
+                  <div className="flex items-center justify-center gap-2 text-primary mb-2">
+                    <Lock className="w-5 h-5" />
+                    <span className="text-sm font-medium">Password Protected</span>
+                  </div>
+                )}
+                <CardTitle className="text-2xl">{files.length} Files</CardTitle>
+                <CardDescription>
+                  {formatFileSize(files.reduce((sum, f) => sum + f.size, 0))} • 
+                  Uploaded {formatDate(files[0]?.upload_date)}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {requiresPassword && (
+                  <div className="space-y-2">
+                    <Label htmlFor="password">Enter Password</Label>
+                    <Input
+                      id="password"
+                      type="password"
+                      value={password}
+                      onChange={(e) => {
+                        setPassword(e.target.value);
+                        setPasswordError(false);
+                      }}
+                      placeholder="Enter password to download"
+                      className={passwordError ? 'border-destructive' : 'border-primary/20 focus:border-primary'}
+                    />
+                  </div>
+                )}
 
-              <div className="space-y-2">
-                <h4 className="text-sm font-medium">Files in this batch:</h4>
-                <div className="max-h-32 overflow-y-auto space-y-1">
-                  {files.map((file, index) => (
-                    <div key={file.id} className="text-xs text-muted-foreground">
-                      {index + 1}. {file.filename} ({formatFileSize(file.size)})
+                <div className="space-y-2">
+                  <h4 className="text-sm font-medium flex items-center gap-2">
+                    <Shield className="w-4 h-4 text-primary" />
+                    Files in this batch:
+                  </h4>
+                  <div className="max-h-32 overflow-y-auto space-y-1 p-3 rounded-lg bg-card/50 border border-border">
+                    {files.map((file, index) => (
+                      <div key={file.id} className="text-xs text-muted-foreground">
+                        {index + 1}. {file.filename} ({formatFileSize(file.size)})
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                
+                <div className="text-center text-sm text-muted-foreground">
+                  Downloaded {files.reduce((sum, f) => sum + f.download_count, 0)} times
+                </div>
+                
+                {downloading && (
+                  <motion.div 
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="space-y-2"
+                  >
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Preparing files...</span>
+                      <span className="text-primary font-medium">{downloadProgress}%</span>
                     </div>
-                  ))}
-                </div>
-              </div>
-              
-              <div className="text-center text-sm text-muted-foreground">
-                Downloaded {files.reduce((sum, f) => sum + f.download_count, 0)} times
-              </div>
-              
-              {downloading && (
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Preparing files...</span>
-                    <span className="text-primary font-medium">{downloadProgress}%</span>
-                  </div>
-                  <Progress value={downloadProgress} className="h-2" />
-                </div>
-              )}
-              
-              <Button 
-                onClick={handleBatchDownload} 
-                disabled={downloading || (requiresPassword && !password)}
-                className="w-full"
-                size="lg"
-              >
-                <DownloadIcon className="w-4 h-4 mr-2" />
-                {downloading ? `Creating ZIP ${downloadProgress}%` : 'Download All Files'}
-              </Button>
-            </CardContent>
-          </Card>
+                    <Progress value={downloadProgress} className="h-2" />
+                  </motion.div>
+                )}
+                
+                <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                  <Button 
+                    onClick={handleBatchDownload} 
+                    disabled={downloading || (requiresPassword && !password)}
+                    className="w-full glow-button bg-gradient-to-r from-primary to-amber-400 hover:from-primary/90 hover:to-amber-400/90"
+                    size="lg"
+                  >
+                    <DownloadIcon className="w-4 h-4 mr-2" />
+                    {downloading ? `Creating ZIP ${downloadProgress}%` : 'Download All Files'}
+                  </Button>
+                </motion.div>
+              </CardContent>
+            </Card>
+          </motion.div>
         ) : (
-          <Card className="w-full">
-            <CardHeader className="text-center">
-              <div className="flex justify-center mb-4">
-                <FileIcon className="w-16 h-16 text-primary" />
-              </div>
-              {requiresPassword && (
-                <div className="flex items-center justify-center gap-2 text-primary mb-2">
-                  <Lock className="w-5 h-5" />
-                  <span className="text-sm font-medium">Password Protected</span>
-                </div>
-              )}
-              <CardTitle className="text-xl">{file?.filename}</CardTitle>
-              <CardDescription>
-                {file && formatFileSize(file.size)} • Uploaded {file && formatDate(file.upload_date)}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {requiresPassword && (
-                <div className="space-y-2">
-                  <Label htmlFor="password">Enter Password</Label>
-                  <Input
-                    id="password"
-                    type="password"
-                    value={password}
-                    onChange={(e) => {
-                      setPassword(e.target.value);
-                      setPasswordError(false);
-                    }}
-                    placeholder="Enter password to download"
-                    className={passwordError ? 'border-destructive' : ''}
-                  />
-                </div>
-              )}
-
-              <div className="text-center text-sm text-muted-foreground">
-                Downloaded {file?.download_count} times
-              </div>
-              
-              {downloading && (
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Downloading...</span>
-                    <span className="text-primary font-medium">{downloadProgress}%</span>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            <Card className="glass border-primary/20">
+              <CardHeader className="text-center">
+                <motion.div 
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ type: "spring", stiffness: 200 }}
+                  className="flex justify-center mb-4"
+                >
+                  <div className="p-4 rounded-2xl bg-primary/10 border border-primary/20">
+                    <FileIcon className="w-12 h-12 text-primary" />
                   </div>
-                  <Progress value={downloadProgress} className="h-2" />
+                </motion.div>
+                {requiresPassword && (
+                  <div className="flex items-center justify-center gap-2 text-primary mb-2">
+                    <Lock className="w-5 h-5" />
+                    <span className="text-sm font-medium">Password Protected</span>
+                  </div>
+                )}
+                <CardTitle className="text-2xl break-all">{file?.filename}</CardTitle>
+                <CardDescription>
+                  {file && formatFileSize(file.size)} • Uploaded {file && formatDate(file.upload_date)}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {requiresPassword && (
+                  <div className="space-y-2">
+                    <Label htmlFor="password">Enter Password</Label>
+                    <Input
+                      id="password"
+                      type="password"
+                      value={password}
+                      onChange={(e) => {
+                        setPassword(e.target.value);
+                        setPasswordError(false);
+                      }}
+                      placeholder="Enter password to download"
+                      className={passwordError ? 'border-destructive' : 'border-primary/20 focus:border-primary'}
+                    />
+                  </div>
+                )}
+
+                <div className="text-center p-4 rounded-lg bg-card/50 border border-border">
+                  <div className="text-sm text-muted-foreground mb-1">Download Count</div>
+                  <div className="text-2xl font-bold text-primary">{file?.download_count}</div>
                 </div>
-              )}
-              
-              <Button 
-                onClick={handleDownload} 
-                disabled={downloading || (requiresPassword && !password)}
-                className="w-full"
-                size="lg"
-              >
-                <DownloadIcon className="w-4 h-4 mr-2" />
-                {downloading ? `Downloading ${downloadProgress}%` : 'Download File'}
-              </Button>
-            </CardContent>
-          </Card>
+                
+                {downloading && (
+                  <motion.div 
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="space-y-2"
+                  >
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Downloading...</span>
+                      <span className="text-primary font-medium">{downloadProgress}%</span>
+                    </div>
+                    <Progress value={downloadProgress} className="h-2" />
+                  </motion.div>
+                )}
+                
+                <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                  <Button 
+                    onClick={handleDownload} 
+                    disabled={downloading || (requiresPassword && !password)}
+                    className="w-full glow-button bg-gradient-to-r from-primary to-amber-400 hover:from-primary/90 hover:to-amber-400/90"
+                    size="lg"
+                  >
+                    <DownloadIcon className="w-4 h-4 mr-2" />
+                    {downloading ? `Downloading ${downloadProgress}%` : 'Download File'}
+                  </Button>
+                </motion.div>
+
+                <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground pt-2">
+                  <Shield className="w-3 h-3" />
+                  <span>This link is secured and authenticated</span>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
         )}
       </div>
     </div>
