@@ -2,7 +2,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 // Storj service that uses edge function
 export const storjService = {
-  async uploadFile(file: File, filePath: string, onProgress?: (progress: number) => void): Promise<void> {
+  async uploadFile(file: File, filePath: string, onProgress?: (progress: number) => void, bucket?: string): Promise<void> {
     // Convert file to base64 for transmission in chunks to avoid stack overflow
     const buffer = await file.arrayBuffer();
     const uint8Array = new Uint8Array(buffer);
@@ -37,6 +37,7 @@ export const storjService = {
         fileData: base64,
         contentType: file.type,
         size: file.size,
+        ...(bucket && { bucket }),
       },
     });
 
@@ -46,12 +47,13 @@ export const storjService = {
     if (!data?.success) throw new Error('Upload failed');
   },
 
-  async downloadFile(filePath: string, onProgress?: (progress: number) => void): Promise<Blob> {
+  async downloadFile(filePath: string, onProgress?: (progress: number) => void, bucket?: string): Promise<Blob> {
     // Get a short-lived pre-signed URL from the edge function and stream it client-side
     const { data, error } = await supabase.functions.invoke('storj-operations', {
       body: {
         operation: 'get-download-url',
         filePath,
+        ...(bucket && { bucket }),
       },
     });
 
@@ -100,11 +102,12 @@ export const storjService = {
     return blob;
   },
 
-  async deleteFile(filePath: string): Promise<void> {
+  async deleteFile(filePath: string, bucket?: string): Promise<void> {
     const { data, error } = await supabase.functions.invoke('storj-operations', {
       body: {
         operation: 'delete',
         filePath,
+        ...(bucket && { bucket }),
       },
     });
 
@@ -112,11 +115,12 @@ export const storjService = {
     if (!data?.success) throw new Error('Delete failed');
   },
 
-  async deleteFiles(filePaths: string[]): Promise<void> {
+  async deleteFiles(filePaths: string[], bucket?: string): Promise<void> {
     const { data, error } = await supabase.functions.invoke('storj-operations', {
       body: {
         operation: 'delete-multiple',
         files: filePaths,
+        ...(bucket && { bucket }),
       },
     });
 
@@ -124,9 +128,13 @@ export const storjService = {
     if (!data?.success) throw new Error('Delete failed');
   },
 
-  async getDownloadUrl(filePath: string): Promise<string> {
+  async getDownloadUrl(filePath: string, bucket?: string): Promise<string> {
     const { data, error } = await supabase.functions.invoke('storj-operations', {
-      body: { operation: 'get-download-url', filePath },
+      body: { 
+        operation: 'get-download-url', 
+        filePath,
+        ...(bucket && { bucket }),
+      },
     });
     if (error) throw error;
     if (!data?.success || !data?.url) throw new Error('Failed to get download URL');

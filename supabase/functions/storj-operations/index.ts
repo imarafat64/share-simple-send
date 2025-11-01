@@ -11,7 +11,7 @@ const corsHeaders = {
 
 // Storj DCS S3-compatible configuration
 const STORJ_ENDPOINT = 'https://gateway.storjshare.io';
-const STORJ_BUCKET = 'shyfto';
+const DEFAULT_BUCKET = 'shyfto';
 
 const createStorjClient = () => {
   const accessKeyId = Deno.env.get('STORJ_ACCESS_KEY_ID');
@@ -39,7 +39,7 @@ const createStorjClient = () => {
 };
 
 // Permanently remove all versions (and delete markers) for a key
-async function deleteAllVersions(client: S3Client, key: string): Promise<void> {
+async function deleteAllVersions(client: S3Client, bucket: string, key: string): Promise<void> {
   try {
     let isTruncated = true;
     let KeyMarker: string | undefined = undefined;
@@ -48,7 +48,7 @@ async function deleteAllVersions(client: S3Client, key: string): Promise<void> {
 
     while (isTruncated) {
       const list = await client.send(new ListObjectVersionsCommand({
-        Bucket: STORJ_BUCKET,
+        Bucket: bucket,
         Prefix: key,
         KeyMarker,
         VersionIdMarker,
@@ -71,7 +71,7 @@ async function deleteAllVersions(client: S3Client, key: string): Promise<void> {
 
     if (objectsToDelete.length === 0) {
       // Bucket may be unversioned; do a standard delete
-      await client.send(new DeleteObjectCommand({ Bucket: STORJ_BUCKET, Key: key }));
+      await client.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }));
       return;
     }
 
@@ -79,7 +79,7 @@ async function deleteAllVersions(client: S3Client, key: string): Promise<void> {
     for (let i = 0; i < objectsToDelete.length; i += 1000) {
       const chunk = objectsToDelete.slice(i, i + 1000);
       await client.send(new DeleteObjectsCommand({
-        Bucket: STORJ_BUCKET,
+        Bucket: bucket,
         Delete: { Objects: chunk, Quiet: true },
       }));
     }
@@ -97,10 +97,11 @@ serve(async (req) => {
 
   try {
     const requestData = await req.json();
-    const { operation, filePath, files, fileData, contentType, size } = requestData;
+    const { operation, filePath, files, fileData, contentType, size, bucket } = requestData;
+    const bucketName = bucket || DEFAULT_BUCKET;
     const client = createStorjClient();
 
-    console.log(`Storj operation: ${operation}, filePath: ${filePath}`);
+    console.log(`Storj operation: ${operation}, bucket: ${bucketName}, filePath: ${filePath}`);
 
     switch (operation) {
       case 'upload': {        
@@ -108,7 +109,7 @@ serve(async (req) => {
         const buffer = base64Decode(fileData);
         
         const command = new PutObjectCommand({
-          Bucket: STORJ_BUCKET,
+          Bucket: bucketName,
           Key: filePath,
           Body: buffer,
           ContentType: contentType,
@@ -127,7 +128,7 @@ serve(async (req) => {
 
       case 'download': {
         const command = new GetObjectCommand({
-          Bucket: STORJ_BUCKET,
+          Bucket: bucketName,
           Key: filePath,
         });
 
@@ -171,7 +172,7 @@ serve(async (req) => {
       }
 
       case 'delete': {
-        await deleteAllVersions(client, filePath);
+        await deleteAllVersions(client, bucketName, filePath);
         return new Response(
           JSON.stringify({ success: true }),
           { 
@@ -184,7 +185,7 @@ serve(async (req) => {
       case 'delete-multiple': {
         // Permanently delete all versions for each file
         for (const path of files) {
-          await deleteAllVersions(client, path);
+          await deleteAllVersions(client, bucketName, path);
         }
         
         return new Response(
@@ -198,7 +199,7 @@ serve(async (req) => {
 
       case 'get-download-url': {
         const command = new GetObjectCommand({
-          Bucket: STORJ_BUCKET,
+          Bucket: bucketName,
           Key: filePath,
         });
         // Generate short-lived pre-signed URL (10 minutes)
