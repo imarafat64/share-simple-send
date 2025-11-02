@@ -101,7 +101,7 @@ const Index = () => {
               </span>
             </h1>
             <p className="text-lg sm:text-xl text-muted-foreground mb-12 max-w-2xl mx-auto">
-              Decentralized storage system. Upload files securely and share them with anyone using a simple link. 
+              Upload files securely and share them with anyone using a simple link. 
               No registration required for downloads.
             </p>
             <motion.div
@@ -116,6 +116,10 @@ const Index = () => {
                 Get Started <ArrowRight className="w-5 h-5 ml-2" />
               </Button>
             </motion.div>
+            
+            <p className="text-sm text-muted-foreground mt-4">
+              Decentralized storage system
+            </p>
 
             {/* Security Badges */}
             <motion.div 
