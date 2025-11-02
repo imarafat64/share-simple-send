@@ -101,7 +101,7 @@ const Index = () => {
               </span>
             </h1>
             <p className="text-lg sm:text-xl text-muted-foreground mb-12 max-w-2xl mx-auto">
-              Upload files securely and share them with anyone using a simple link. 
+              Decentralized storage system. Upload files securely and share them with anyone using a simple link. 
               No registration required for downloads.
             </p>
             <motion.div
