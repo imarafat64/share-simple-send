@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Upload, Share, Download, ArrowRight, Shield, Lock, Zap } from 'lucide-react';
+import { Upload, Share, Download, ArrowRight, Shield, Lock, Zap, Server } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const Index = () => {
@@ -55,7 +55,8 @@ const Index = () => {
   const securityFeatures = [
     { icon: Shield, text: "SSL Encrypted" },
     { icon: Lock, text: "Password Protected" },
-    { icon: Zap, text: "Lightning Fast" }
+    { icon: Zap, text: "Lightning Fast" },
+    { icon: Server, text: "Decentralized Storage" }
   ];
 
   return (
