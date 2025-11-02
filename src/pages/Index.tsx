@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Upload, Share, Download, ArrowRight, Shield, Lock, Zap, Server } from 'lucide-react';
 import { motion } from 'framer-motion';
 
@@ -164,6 +165,64 @@ const Index = () => {
               </motion.div>
             ))}
           </div>
+        </section>
+
+        {/* FAQ Section */}
+        <section className="py-20 max-w-3xl mx-auto">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+          >
+            <h2 className="text-4xl font-bold text-center mb-4">
+              Frequently Asked Questions
+            </h2>
+            <p className="text-muted-foreground text-center mb-12">
+              Everything you need to know about Shyfto
+            </p>
+            <Accordion type="single" collapsible className="w-full">
+              <AccordionItem value="item-1">
+                <AccordionTrigger className="text-left">
+                  What is Shyfto?
+                </AccordionTrigger>
+                <AccordionContent className="text-muted-foreground">
+                  Shyfto is a secure and fast file-sharing platform that lets you upload, share, and manage files online — without login or complexity.
+                </AccordionContent>
+              </AccordionItem>
+              <AccordionItem value="item-2">
+                <AccordionTrigger className="text-left">
+                  Is Shyfto free to use?
+                </AccordionTrigger>
+                <AccordionContent className="text-muted-foreground">
+                  Yes. Shyfto offers a free plan for quick file sharing and paid plans with more storage, speed, and privacy controls.
+                </AccordionContent>
+              </AccordionItem>
+              <AccordionItem value="item-3">
+                <AccordionTrigger className="text-left">
+                  How can I send large files online with Shyfto?
+                </AccordionTrigger>
+                <AccordionContent className="text-muted-foreground">
+                  Simply upload your file, copy the secure link, and share it. The recipient can download instantly — no account needed.
+                </AccordionContent>
+              </AccordionItem>
+              <AccordionItem value="item-4">
+                <AccordionTrigger className="text-left">
+                  Are my files safe on Shyfto?
+                </AccordionTrigger>
+                <AccordionContent className="text-muted-foreground">
+                  Yes. All uploads are encrypted and securely stored in the cloud, ensuring your files stay private and protected.
+                </AccordionContent>
+              </AccordionItem>
+              <AccordionItem value="item-5">
+                <AccordionTrigger className="text-left">
+                  Can I password-protect or set expiry for shared files?
+                </AccordionTrigger>
+                <AccordionContent className="text-muted-foreground">
+                  Absolutely. Shyfto Pro users can add passwords and expiration dates to their file links for extra security and control.
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+          </motion.div>
         </section>
 
         {/* CTA Section */}
