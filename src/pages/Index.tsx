@@ -117,10 +117,6 @@ const Index = () => {
                 Get Started <ArrowRight className="w-5 h-5 ml-2" />
               </Button>
             </motion.div>
-            
-            <p className="text-sm text-muted-foreground mt-4">
-              Decentralized storage system
-            </p>
 
             {/* Security Badges */}
             <motion.div 
