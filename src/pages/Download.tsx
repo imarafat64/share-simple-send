@@ -314,11 +314,11 @@ const Download = () => {
         >
           <Card className="glass w-full max-w-md">
             <CardHeader className="text-center">
-              <AlertCircle className="w-16 h-16 text-destructive mx-auto mb-4" />
-              <CardTitle className="text-xl text-destructive">
+              <AlertCircle className="w-12 h-12 sm:w-16 sm:h-16 text-destructive mx-auto mb-4" />
+              <CardTitle className="text-lg sm:text-xl text-destructive">
                 {isBatch ? "Batch Not Found" : "File Not Found"}
               </CardTitle>
-              <CardDescription>
+              <CardDescription className="text-sm">
                 {isBatch 
                   ? "The file batch you're looking for doesn't exist, has been removed, or has expired."
                   : "The file you're looking for doesn't exist, has been removed, or has expired."
@@ -397,7 +397,7 @@ const Download = () => {
                     <span className="text-sm font-medium">Password Protected</span>
                   </div>
                 )}
-                <CardTitle className="text-2xl">{files.length} Files</CardTitle>
+                <CardTitle className="text-lg sm:text-xl">{files.length} Files</CardTitle>
                 <CardDescription>
                   {formatFileSize(files.reduce((sum, f) => sum + f.size, 0))} • 
                   Uploaded {formatDate(files[0]?.upload_date)}
@@ -490,7 +490,7 @@ const Download = () => {
                     <span className="text-sm font-medium">Password Protected</span>
                   </div>
                 )}
-                <CardTitle className="text-2xl break-all">{file?.filename}</CardTitle>
+                <CardTitle className="text-lg sm:text-xl break-words">{file?.filename}</CardTitle>
                 <CardDescription>
                   {file && formatFileSize(file.size)} • Uploaded {file && formatDate(file.upload_date)}
                 </CardDescription>

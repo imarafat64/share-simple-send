@@ -64,11 +64,11 @@ const Index = () => {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="border-b border-border/40 backdrop-blur-lg bg-background/80 sticky top-0 z-50">
-        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
+        <div className="container mx-auto px-4 py-3 sm:py-4 flex justify-between items-center">
           <motion.h1 
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="text-2xl font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent"
+            className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent"
           >
             Shyfto
           </motion.h1>
@@ -79,7 +79,8 @@ const Index = () => {
             <Button 
               onClick={handleGetStarted} 
               variant="outline"
-              className="border-primary/20 hover:border-primary/40 hover:bg-primary/10"
+              size="sm"
+              className="border-primary/20 hover:border-primary/40 hover:bg-primary/10 text-sm"
             >
               {user ? 'Dashboard' : 'Sign In'}
             </Button>
@@ -89,20 +90,20 @@ const Index = () => {
 
       <main className="container mx-auto px-4">
         {/* Hero Section */}
-        <section className="py-20 lg:py-32">
+        <section className="py-12 sm:py-20 lg:py-32">
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
             className="text-center mb-16"
           >
-            <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold mb-6">
+            <h1 className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-bold mb-4 sm:mb-6 px-4">
               Share Files{" "}
               <span className="bg-gradient-to-r from-primary via-amber-400 to-primary bg-clip-text text-transparent">
                 Instantly
               </span>
             </h1>
-            <p className="text-lg sm:text-xl text-muted-foreground mb-12 max-w-2xl mx-auto">
+            <p className="text-base sm:text-lg md:text-xl text-muted-foreground mb-8 sm:mb-12 max-w-2xl mx-auto px-4">
               Upload files securely and share them with anyone using a simple link. 
               No registration required for downloads.
             </p>
@@ -113,9 +114,9 @@ const Index = () => {
               <Button 
                 onClick={handleGetStarted} 
                 size="lg" 
-                className="text-lg px-10 py-6 glow-button bg-gradient-to-r from-primary to-amber-400 hover:from-primary/90 hover:to-amber-400/90"
+                className="text-base sm:text-lg px-6 py-5 sm:px-10 sm:py-6 glow-button bg-gradient-to-r from-primary to-amber-400 hover:from-primary/90 hover:to-amber-400/90"
               >
-                Get Started <ArrowRight className="w-5 h-5 ml-2" />
+                Get Started <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 ml-2" />
               </Button>
             </motion.div>
 
@@ -124,12 +125,12 @@ const Index = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 }}
-              className="flex justify-center gap-8 mt-12"
+              className="flex flex-wrap justify-center gap-4 sm:gap-6 md:gap-8 mt-8 sm:mt-12 px-4"
             >
               {securityFeatures.map((feature, index) => (
                 <div key={index} className="flex items-center gap-2 text-muted-foreground">
-                  <feature.icon className="w-5 h-5 text-primary" />
-                  <span className="text-sm">{feature.text}</span>
+                  <feature.icon className="w-4 h-4 sm:w-5 sm:h-5 text-primary flex-shrink-0" />
+                  <span className="text-xs sm:text-sm whitespace-nowrap">{feature.text}</span>
                 </div>
               ))}
             </motion.div>
@@ -137,8 +138,8 @@ const Index = () => {
         </section>
 
         {/* Features Section */}
-        <section className="py-16 max-w-6xl mx-auto">
-          <div className="grid sm:grid-cols-1 md:grid-cols-3 gap-8">
+        <section className="py-12 sm:py-16 max-w-6xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8">
             {features.map((feature, index) => (
               <motion.div
                 key={index}
@@ -168,16 +169,16 @@ const Index = () => {
         </section>
 
         {/* FAQ Section */}
-        <section className="py-20 max-w-3xl mx-auto">
+        <section className="py-12 sm:py-20 max-w-3xl mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
           >
-            <h2 className="text-4xl font-bold text-center mb-4">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-center mb-3 sm:mb-4 px-4">
               Frequently Asked Questions
             </h2>
-            <p className="text-muted-foreground text-center mb-12">
+            <p className="text-sm sm:text-base text-muted-foreground text-center mb-8 sm:mb-12 px-4">
               Everything you need to know about Shyfto
             </p>
             <Accordion type="single" collapsible className="w-full">
@@ -226,15 +227,15 @@ const Index = () => {
         </section>
 
         {/* CTA Section */}
-        <section className="py-20 text-center">
+        <section className="py-12 sm:py-20 text-center">
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             whileInView={{ opacity: 1, scale: 1 }}
             viewport={{ once: true }}
-            className="glass max-w-3xl mx-auto p-12 rounded-3xl border-primary/10"
+            className="glass max-w-3xl mx-auto p-6 sm:p-12 rounded-2xl sm:rounded-3xl border-primary/10"
           >
-            <h2 className="text-4xl font-bold mb-4">Ready to start sharing?</h2>
-            <p className="text-muted-foreground mb-8 text-lg">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-3 sm:mb-4 px-4">Ready to start sharing?</h2>
+            <p className="text-muted-foreground mb-6 sm:mb-8 text-sm sm:text-base md:text-lg px-4">
               Join thousands of users who trust our platform for secure file sharing.
             </p>
             <motion.div
@@ -245,7 +246,7 @@ const Index = () => {
                 onClick={handleGetStarted} 
                 size="lg" 
                 variant="outline"
-                className="border-primary/30 hover:border-primary hover:bg-primary/10 text-lg px-8 py-6"
+                className="border-primary/30 hover:border-primary hover:bg-primary/10 text-base sm:text-lg px-6 py-5 sm:px-8 sm:py-6"
               >
                 {user ? 'Go to Dashboard' : 'Create Free Account'}
               </Button>
@@ -254,13 +255,13 @@ const Index = () => {
         </section>
 
         {/* Footer */}
-        <footer className="border-t border-border/40 py-8 mt-20">
-          <div className="flex justify-center gap-8 text-sm text-muted-foreground">
+        <footer className="border-t border-border/40 py-6 sm:py-8 mt-12 sm:mt-20">
+          <div className="flex flex-wrap justify-center gap-4 sm:gap-8 text-xs sm:text-sm text-muted-foreground px-4">
             <a href="#" className="hover:text-primary transition-colors">Privacy</a>
             <a href="#" className="hover:text-primary transition-colors">Terms</a>
             <a href="#" className="hover:text-primary transition-colors">Support</a>
           </div>
-          <p className="text-center text-muted-foreground text-sm mt-4">
+          <p className="text-center text-muted-foreground text-xs sm:text-sm mt-3 sm:mt-4 px-4">
             © 2024 Shyfto. All rights reserved.
           </p>
         </footer>
