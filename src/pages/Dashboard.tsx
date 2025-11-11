@@ -220,8 +220,28 @@ const Dashboard = () => {
     
     try {
       const batchId = selectedFiles.length > 1 ? crypto.randomUUID() : null;
-      const expiresAt = new Date();
-      expiresAt.setDate(expiresAt.getDate() + limits.retentionDays);
+      
+      // Get subscription end date for pro users
+      let expiresAt: Date;
+      if (planType === 'pro') {
+        const { data: subscription } = await supabase
+          .from('user_subscriptions')
+          .select('subscription_end')
+          .eq('user_id', user.id)
+          .single();
+        
+        if (subscription?.subscription_end) {
+          expiresAt = new Date(subscription.subscription_end);
+        } else {
+          // Fallback to 30 days from now if no subscription_end
+          expiresAt = new Date();
+          expiresAt.setDate(expiresAt.getDate() + 30);
+        }
+      } else {
+        // Free users: 7 days from upload
+        expiresAt = new Date();
+        expiresAt.setDate(expiresAt.getDate() + limits.retentionDays);
+      }
 
       const uploadPromises = Array.from(selectedFiles).map(async (file) => {
         const fileExt = file.name.split('.').pop();

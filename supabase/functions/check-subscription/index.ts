@@ -122,6 +122,15 @@ serve(async (req) => {
           subscription_status: subscriptionStatus,
           subscription_end: subscriptionEnd,
         });
+      
+      // Update all user's existing files to expire at subscription_end
+      if (subscriptionEnd) {
+        logStep("Updating existing files expiration to subscription end", { subscriptionEnd });
+        await supabaseClient
+          .from('files')
+          .update({ expires_at: subscriptionEnd })
+          .eq('user_id', user.id);
+      }
     } else {
       logStep("No active subscription found, checking for canceled/past_due");
       
@@ -143,6 +152,15 @@ serve(async (req) => {
           stripe_subscription_id: null,
           stripe_product_id: null,
         });
+      
+      // Update all user's files to 7-day retention from now
+      const freeExpiresAt = new Date();
+      freeExpiresAt.setDate(freeExpiresAt.getDate() + 7);
+      logStep("Updating files to free plan retention", { expiresAt: freeExpiresAt.toISOString() });
+      await supabaseClient
+        .from('files')
+        .update({ expires_at: freeExpiresAt.toISOString() })
+        .eq('user_id', user.id);
     }
 
     return new Response(JSON.stringify({
