@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Upload, Share, Download, ArrowRight, Shield, Lock, Zap, Server } from 'lucide-react';
 import { motion } from 'framer-motion';
+import logo from '@/assets/shyfto-favicon.png';
 
 const Index = () => {
   const [user, setUser] = useState(null);
@@ -65,13 +66,16 @@ const Index = () => {
       {/* Header */}
       <header className="border-b border-border/40 backdrop-blur-lg bg-background/80 sticky top-0 z-50">
         <div className="container mx-auto px-4 py-3 sm:py-4 flex justify-between items-center">
-          <motion.h1 
+          <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent"
+            className="flex items-center gap-2 sm:gap-3"
           >
-            Shyfto
-          </motion.h1>
+            <img src={logo} alt="Shyfto" className="w-8 h-8 sm:w-10 sm:h-10" />
+            <h1 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
+              Shyfto
+            </h1>
+          </motion.div>
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
