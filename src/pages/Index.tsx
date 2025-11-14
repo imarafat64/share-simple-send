@@ -71,7 +71,9 @@ const Index = () => {
             animate={{ opacity: 1, x: 0 }}
             className="flex items-center gap-2 sm:gap-3"
           >
-            <img src={logo} alt="Shyfto" className="w-8 h-8 sm:w-10 sm:h-10" />
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-gradient-to-r from-primary to-primary/70 p-1.5 sm:p-2 flex items-center justify-center">
+              <img src={logo} alt="Shyfto" className="w-full h-full object-contain" />
+            </div>
             <h1 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
               Shyfto
             </h1>
