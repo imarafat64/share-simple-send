@@ -127,14 +127,8 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      calculate_user_storage: {
-        Args: { p_user_id: string }
-        Returns: number
-      }
-      generate_batch_id: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
+      calculate_user_storage: { Args: { p_user_id: string }; Returns: number }
+      generate_batch_id: { Args: never; Returns: string }
       get_user_plan_limits: {
         Args: { p_user_id: string }
         Returns: {
