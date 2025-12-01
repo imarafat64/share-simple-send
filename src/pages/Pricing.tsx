@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { useSubscription } from '@/hooks/useSubscription';
 import { useNavigate } from 'react-router-dom';
+import { SEOHead } from '@/components/SEOHead';
 
 const Pricing = () => {
   const { planType, subscribed, createCheckout, manageSubscription, loading } = useSubscription();
@@ -66,10 +67,17 @@ const Pricing = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
-      <div className="container mx-auto px-4 py-8 sm:py-12 md:py-16">
+    <>
+      <SEOHead 
+        title="Shyfto Pricing - Free & Pro Plans for File Sharing"
+        description="Choose the right file sharing plan for you. Start free with 5GB storage or upgrade to Pro for 100GB, larger files, and password protection. From $5/month."
+        keywords="file sharing pricing, cloud storage plans, file transfer cost, pro file sharing"
+        canonical="https://shyfto.com/pricing"
+      />
+      <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
+        <main className="container mx-auto px-4 py-8 sm:py-12 md:py-16" role="main">
         <div className="text-center mb-8 sm:mb-12">
-          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-3 sm:mb-4 px-4">Choose Your Plan</h1>
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-3 sm:mb-4 px-4">Choose Your File Sharing Plan</h1>
           <p className="text-base sm:text-lg md:text-xl text-muted-foreground px-4">
             Start free, upgrade when you need more
           </p>
@@ -142,8 +150,9 @@ const Pricing = () => {
             Go to Dashboard
           </Button>
         </div>
-      </div>
+      </main>
     </div>
+    </>
   );
 };
 
