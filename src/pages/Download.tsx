@@ -12,6 +12,7 @@ import JSZip from 'jszip';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { motion } from 'framer-motion';
+import { SEOHead } from '@/components/SEOHead';
 
 interface FileData {
   id: string;
@@ -341,7 +342,17 @@ const Download = () => {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
+    <>
+      <SEOHead 
+        title={isBatch 
+          ? `Download ${files.length} Files from Shyfto` 
+          : `Download ${file?.filename || 'File'} - Shyfto`
+        }
+        description="Download your shared files securely from Shyfto. Fast, encrypted file downloads with no registration required."
+        canonical={`https://shyfto.com/download/${isBatch ? `batch/${batchId}` : fileId}`}
+        noindex={true}
+      />
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <div className="w-full max-w-md space-y-4">
         {uploaderPlan === 'free' && (
           <motion.div
@@ -554,6 +565,7 @@ const Download = () => {
         )}
       </div>
     </div>
+    </>
   );
 };
 

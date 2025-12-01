@@ -7,6 +7,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { Upload, Share, Download, ArrowRight, Shield, Lock, Zap, Server } from 'lucide-react';
 import { motion } from 'framer-motion';
 import logo from '@/assets/shyfto-favicon.png';
+import { SEOHead } from '@/components/SEOHead';
 
 const Index = () => {
   const [user, setUser] = useState(null);
@@ -62,9 +63,16 @@ const Index = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b border-border/40 backdrop-blur-lg bg-background/80 sticky top-0 z-50">
+    <>
+      <SEOHead 
+        title="Shyfto - Secure File Sharing Made Simple | Upload & Share Instantly"
+        description="Share large files instantly with Shyfto. Secure, fast file sharing with password protection and no registration required. Upload up to 2GB per file with Pro."
+        keywords="file sharing, send large files, secure file transfer, share files online, cloud storage, file upload, encrypted file sharing"
+        canonical="https://shyfto.com/"
+      />
+      <div className="min-h-screen bg-background">
+        {/* Header */}
+        <header className="border-b border-border/40 backdrop-blur-lg bg-background/80 sticky top-0 z-50" role="banner">
         <div className="container mx-auto px-4 py-3 sm:py-4 flex justify-between items-center">
           <motion.div
             initial={{ opacity: 0, x: -20 }}
@@ -94,19 +102,19 @@ const Index = () => {
         </div>
       </header>
 
-      <main className="container mx-auto px-4">
+      <main className="container mx-auto px-4" role="main">
         {/* Hero Section */}
-        <section className="py-12 sm:py-20 lg:py-32">
+        <section className="py-12 sm:py-20 lg:py-32" aria-labelledby="hero-heading">
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
             className="text-center mb-16"
           >
-            <h1 className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-bold mb-4 sm:mb-6 px-4">
+            <h1 id="hero-heading" className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-bold mb-4 sm:mb-6 px-4">
               Share Files{" "}
               <span className="bg-gradient-to-r from-primary via-amber-400 to-primary bg-clip-text text-transparent">
-                Instantly
+                Instantly & Securely
               </span>
             </h1>
             <p className="text-base sm:text-lg md:text-xl text-muted-foreground mb-8 sm:mb-12 max-w-2xl mx-auto px-4">
@@ -144,7 +152,8 @@ const Index = () => {
         </section>
 
         {/* Features Section */}
-        <section className="py-12 sm:py-16 max-w-6xl mx-auto">
+        <section className="py-12 sm:py-16 max-w-6xl mx-auto" aria-labelledby="features-heading">
+          <h2 id="features-heading" className="sr-only">Key Features</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8">
             {features.map((feature, index) => (
               <motion.div
@@ -154,9 +163,9 @@ const Index = () => {
                 transition={{ delay: 0.1 * index }}
                 whileHover={{ y: -8 }}
               >
-                <Card className="glass border-primary/10 hover:border-primary/30 transition-all duration-300 h-full">
+                <Card className="glass border-primary/10 hover:border-primary/30 transition-all duration-300 h-full" role="article">
                   <CardHeader className="text-center">
-                    <div className="flex justify-center mb-4">
+                    <div className="flex justify-center mb-4" aria-hidden="true">
                       <div className="p-4 rounded-2xl bg-primary/10 border border-primary/20">
                         <feature.icon className="w-8 h-8 text-primary" />
                       </div>
@@ -175,19 +184,67 @@ const Index = () => {
         </section>
 
         {/* FAQ Section */}
-        <section className="py-12 sm:py-20 max-w-3xl mx-auto">
+        <section className="py-12 sm:py-20 max-w-3xl mx-auto" aria-labelledby="faq-heading">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
           >
-            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-center mb-3 sm:mb-4 px-4">
+            <h2 id="faq-heading" className="text-2xl sm:text-3xl md:text-4xl font-bold text-center mb-3 sm:mb-4 px-4">
               Frequently Asked Questions
             </h2>
             <p className="text-sm sm:text-base text-muted-foreground text-center mb-8 sm:mb-12 px-4">
               Everything you need to know about Shyfto
             </p>
             <Accordion type="single" collapsible className="w-full">
+              <script type="application/ld+json">
+              {JSON.stringify({
+                "@context": "https://schema.org",
+                "@type": "FAQPage",
+                "mainEntity": [
+                  {
+                    "@type": "Question",
+                    "name": "What is Shyfto?",
+                    "acceptedAnswer": {
+                      "@type": "Answer",
+                      "text": "Shyfto is a secure and fast file-sharing platform that lets you upload, share, and manage files online — without login or complexity."
+                    }
+                  },
+                  {
+                    "@type": "Question",
+                    "name": "Is Shyfto free to use?",
+                    "acceptedAnswer": {
+                      "@type": "Answer",
+                      "text": "Yes. Shyfto offers a free plan for quick file sharing and paid plans with more storage, speed, and privacy controls."
+                    }
+                  },
+                  {
+                    "@type": "Question",
+                    "name": "How can I send large files online with Shyfto?",
+                    "acceptedAnswer": {
+                      "@type": "Answer",
+                      "text": "Simply upload your file, copy the secure link, and share it. The recipient can download instantly — no account needed."
+                    }
+                  },
+                  {
+                    "@type": "Question",
+                    "name": "Are my files safe on Shyfto?",
+                    "acceptedAnswer": {
+                      "@type": "Answer",
+                      "text": "Yes. All uploads are encrypted and securely stored in the cloud, ensuring your files stay private and protected."
+                    }
+                  },
+                  {
+                    "@type": "Question",
+                    "name": "Can I password-protect or set expiry for shared files?",
+                    "acceptedAnswer": {
+                      "@type": "Answer",
+                      "text": "Absolutely. Shyfto Pro users can add passwords and expiration dates to their file links for extra security and control."
+                    }
+                  }
+                ]
+              })}
+              </script>
               <AccordionItem value="item-1">
                 <AccordionTrigger className="text-left">
                   What is Shyfto?
@@ -233,14 +290,14 @@ const Index = () => {
         </section>
 
         {/* CTA Section */}
-        <section className="py-12 sm:py-20 text-center">
+        <section className="py-12 sm:py-20 text-center" aria-labelledby="cta-heading">
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             whileInView={{ opacity: 1, scale: 1 }}
             viewport={{ once: true }}
             className="glass max-w-3xl mx-auto p-6 sm:p-12 rounded-2xl sm:rounded-3xl border-primary/10"
           >
-            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-3 sm:mb-4 px-4">Ready to start sharing?</h2>
+            <h2 id="cta-heading" className="text-2xl sm:text-3xl md:text-4xl font-bold mb-3 sm:mb-4 px-4">Ready to start sharing?</h2>
             <p className="text-muted-foreground mb-6 sm:mb-8 text-sm sm:text-base md:text-lg px-4">
               Join thousands of users who trust our platform for secure file sharing.
             </p>
@@ -261,18 +318,19 @@ const Index = () => {
         </section>
 
         {/* Footer */}
-        <footer className="border-t border-border/40 py-6 sm:py-8 mt-12 sm:mt-20">
-          <div className="flex flex-wrap justify-center gap-4 sm:gap-8 text-xs sm:text-sm text-muted-foreground px-4">
-            <a href="#" className="hover:text-primary transition-colors">Privacy</a>
-            <a href="#" className="hover:text-primary transition-colors">Terms</a>
-            <a href="#" className="hover:text-primary transition-colors">Support</a>
-          </div>
+        <footer className="border-t border-border/40 py-6 sm:py-8 mt-12 sm:mt-20" role="contentinfo">
+          <nav className="flex flex-wrap justify-center gap-4 sm:gap-8 text-xs sm:text-sm text-muted-foreground px-4" aria-label="Footer navigation">
+            <a href="#" className="hover:text-primary transition-colors">Privacy Policy</a>
+            <a href="#" className="hover:text-primary transition-colors">Terms of Service</a>
+            <a href="#" className="hover:text-primary transition-colors">Contact Support</a>
+          </nav>
           <p className="text-center text-muted-foreground text-xs sm:text-sm mt-3 sm:mt-4 px-4">
             © 2024 Shyfto. All rights reserved.
           </p>
         </footer>
       </main>
     </div>
+    </>
   );
 };
 

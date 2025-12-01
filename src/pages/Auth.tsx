@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/hooks/use-toast';
 import { User } from '@supabase/supabase-js';
+import { SEOHead } from '@/components/SEOHead';
 
 const Auth = () => {
   const [email, setEmail] = useState('');
@@ -116,8 +117,15 @@ const Auth = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-md">
+    <>
+      <SEOHead 
+        title="Sign In to Shyfto | Secure File Sharing Account"
+        description="Sign in to your Shyfto account to upload and share files securely. Create a free account in seconds with no credit card required."
+        canonical="https://shyfto.com/auth"
+        noindex={true}
+      />
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <Card className="w-full max-w-md" role="main">
         <CardHeader className="text-center">
           <CardTitle className="text-xl sm:text-2xl font-bold">Shyfto</CardTitle>
           <CardDescription className="text-sm">
@@ -196,6 +204,7 @@ const Auth = () => {
         </CardContent>
       </Card>
     </div>
+    </>
   );
 };
 
